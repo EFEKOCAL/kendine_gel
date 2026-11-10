@@ -21,7 +21,7 @@ function viewHome() {
     </section>
     <div class="grid2">
       <a class="tile" href="#/rehber"><h3>Rehber</h3><p>Kısa kartlarla: neden kaçıyoruz, dopamin, sürtünme, kafein, başlama.</p></a>
-      <a class="tile" href="#/gecmis"><h3>Geçmiş ${pending ? `<span class="pill">${pending} geri bildirim bekliyor</span>` : ""}</h3><p>Hangi müdahale sende işe yarıyor, odak süren nasıl değişiyor.</p></a>
+      <a class="tile" href="#/gecmis"><h3>Geçmiş ${pending ? `<span class="pill">${pending} geri bildirim bekliyor</span>` : ""}</h3><p>Bloktan sonra geri bildirim ver. Biriken sonuçlar kişisel protokolünü oluşturur: sende işe yarayan müdahaleler acil listede üste çıkar.</p></a>
     </div>`;
 }
 
@@ -50,6 +50,7 @@ function viewAcil() {
           <span class="lvnum">Seviye ${l.id}</span><strong>${esc(l.name)}</strong>
           <ul>${l.signs.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
           <span class="goal">${esc(l.goal)}</span>
+          ${(b => b ? `<span class="best">Sende en iyisi: ${esc(b.title)}</span>` : "")(bestFor(l.id))}
         </button>`).join("")}</div>`;
     $app.querySelectorAll("[data-level]").forEach(b => b.onclick = () => { flow.level = +b.dataset.level; flow.step = "env"; viewAcil(); });
   }
@@ -63,8 +64,8 @@ function viewAcil() {
     });
   }
   else if (flow.step === "pick") {
-    const list = INTERVENTIONS.filter(i => i.levels.includes(flow.level) && i.envs.includes(flow.env));
-    const stats = interventionStats();
+    const stats = interventionStats(flow.level);
+    const list = rankInterventions(INTERVENTIONS.filter(i => i.levels.includes(flow.level) && i.envs.includes(flow.env)), stats);
     $app.innerHTML = `
       ${back()}
       <h2>3. Hangisini şimdi yapabilirsin?</h2>
@@ -74,7 +75,8 @@ function viewAcil() {
         const st = stats[i.id];
         return `<article class="intv">
           <header><h3>${esc(i.title)}</h3><span class="dur">${esc(i.dur)}</span></header>
-          <div class="meta">${evBadge(i.ev)}${st ? `<span class="badge ev-own">Sende: ${st.ok}/${st.n} işe yaradı</span>` : ""}</div>
+          <div class="meta">${evBadge(i.ev)}${st ? `<span class="badge ${st.verdict.cls}">${esc(st.verdict.label)}</span>` : `<span class="badge ev-own">Henüz denemedin</span>`}</div>
+          ${st?.lastNote ? `<p class="mynote">Son notun: ${esc(st.lastNote)}</p>` : ""}
           <ol class="steps">${i.steps.map(x => `<li>${esc(x)}</li>`).join("")}</ol>
           ${i.caution ? `<p class="caution">${esc(i.caution)}</p>` : ""}
           <details><summary>Neden işe yarar?</summary><p>${esc(i.why)}</p>${srcList(i.src)}</details>
@@ -164,14 +166,41 @@ function tick() {
 }
 
 // ---------- Geçmiş ----------
-function interventionStats() {
+// Kişisel öğrenme: geri bildirimler müdahale başına birikir.
+// Puan: evet=1, kısmen=0.5, hayır=0. level verilirse yalnızca o seviyedeki kayıtlar sayılır.
+const WORKED_SCORE = { evet: 1, kismen: 0.5, hayir: 0 };
+function interventionStats(level) {
   const r = {};
   Store.get().entries.forEach(e => {
-    if (!e.feedback) return;
-    const x = r[e.intv] ||= { n: 0, ok: 0, focus: 0 };
-    x.n++; if (e.feedback.worked === "evet") x.ok++; x.focus += e.feedback.focus;
+    if (!e.feedback || (level && e.level !== level)) return;
+    const x = r[e.intv] ||= { n: 0, ok: 0, score: 0, focus: 0, min: 0, lastNote: "" };
+    x.n++; if (e.feedback.worked === "evet") x.ok++;
+    x.score += WORKED_SCORE[e.feedback.worked]; x.focus += e.feedback.focus; x.min += e.actualMin || 0;
+    if (e.feedback.note) x.lastNote = e.feedback.note;
   });
+  Object.values(r).forEach(x => { x.rate = x.score / x.n; x.verdict = verdict(x); });
   return r;
+}
+// En az 2 deneme olmadan hüküm verilmez.
+function verdict(x) {
+  if (x.n < 2) return { key: "az", label: `1 deneme, karar için az`, cls: "ev-weak" };
+  if (x.rate >= 0.7) return { key: "iyi", label: `Sende işe yarıyor (%${Math.round(100 * x.rate)}, ${x.n} deneme)`, cls: "ev-strong" };
+  if (x.rate <= 0.3) return { key: "zayif", label: `Sende zayıf (%${Math.round(100 * x.rate)}, ${x.n} deneme)`, cls: "ev-bad" };
+  return { key: "karisik", label: `Karışık (%${Math.round(100 * x.rate)}, ${x.n} deneme)`, cls: "ev-mid" };
+}
+const EV_RANK = { guclu: 0, orta: 1, zayif: 2 };
+const VERDICT_RANK = { iyi: 0, karisik: 1, az: 2, yok: 2, zayif: 3 };
+// Sıralama: önce kişisel sonuç (işe yarayan üste, zayıf alta), sonra kanıt seviyesi.
+function rankInterventions(list, stats) {
+  return list.slice().sort((a, b) =>
+    VERDICT_RANK[stats[a.id]?.verdict.key || "yok"] - VERDICT_RANK[stats[b.id]?.verdict.key || "yok"]
+    || (stats[b.id]?.rate ?? -1) - (stats[a.id]?.rate ?? -1)
+    || EV_RANK[a.ev] - EV_RANK[b.ev]);
+}
+function bestFor(level) {
+  const st = interventionStats(level);
+  const best = Object.entries(st).filter(([, x]) => x.verdict.key === "iyi").sort((a, b) => b[1].rate - a[1].rate)[0];
+  return best ? byId(INTERVENTIONS, best[0]) : null;
 }
 
 function viewGecmis() {
@@ -188,10 +217,16 @@ function viewGecmis() {
       <div><b>${last7.reduce((a, e) => a + e.actualMin, 0)}</b><span>dk odak (7 gün)</span></div>
       <div><b>${avg(last7)}</b><span>ort. blok süresi (dk)</span></div>
     </div>
-    ${Object.keys(stats).length ? `<h3>Müdahaleler sende nasıl çalışıyor?</h3>
-      <table class="tbl"><tr><th>Müdahale</th><th>Deneme</th><th>İşe yaradı</th><th>Ort. odak</th></tr>
-      ${Object.entries(stats).sort((a, b) => b[1].ok / b[1].n - a[1].ok / a[1].n).map(([id, x]) =>
-        `<tr><td>${esc(byId(INTERVENTIONS, id)?.title || id)}</td><td>${x.n}</td><td>%${Math.round(100 * x.ok / x.n)}</td><td>${(x.focus / x.n).toFixed(1)}/5</td></tr>`).join("")}</table>` : ""}
+    ${Object.keys(stats).length ? `<h3>Kişisel protokolün</h3>
+      <p class="muted small">Geri bildirimlerinden çıkan sonuç. Seviye başına işe yarayan üstte, zayıf olan altta. Hüküm için en az 2 deneme gerekir.</p>
+      <div class="personal">${LEVELS.map(l => {
+        const st = interventionStats(l.id), ids = Object.keys(st);
+        if (!ids.length) return "";
+        const ranked = rankInterventions(ids.map(id => byId(INTERVENTIONS, id)).filter(Boolean), st);
+        return `<article class="entry lvb${l.id}"><header><span>Seviye ${l.id} · ${esc(l.name)}</span></header>
+          <table class="tbl"><tr><th>Müdahale</th><th>Sonuç</th><th>Ort. odak</th><th>Ort. blok</th></tr>
+          ${ranked.map(i => { const x = st[i.id]; return `<tr><td>${esc(i.title)}</td><td><span class="badge ${x.verdict.cls}">${esc(x.verdict.label)}</span></td><td>${(x.focus / x.n).toFixed(1)}/5</td><td>${Math.round(x.min / x.n)} dk</td></tr>`; }).join("")}
+          </table></article>`; }).join("")}</div>` : ""}
     <h3>Kayıtlar</h3>
     ${done.length ? "" : `<p class="muted">Henüz tamamlanmış blok yok.</p>`}
     <div class="entries">${done.slice().reverse().map(e => `

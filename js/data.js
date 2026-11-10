@@ -55,7 +55,22 @@ const SOURCES = {
   steel2007: "Steel, P. (2007). The nature of procrastination: A meta-analytic and theoretical review. Psychological Bulletin, 133(1), 65–94.",
   szuhany2015: "Szuhany, K. L., Bugatti, M. & Otto, M. W. (2015). A meta-analytic review of the effects of exercise on brain-derived neurotrophic factor. Journal of Psychiatric Research, 60, 56–64.",
   ward2017: "Ward, A. F. ve ark. (2017). Brain drain: The mere presence of one's own smartphone reduces available cognitive capacity. Journal of the Association for Consumer Research, 2(2), 140–154.",
-  wood2016: "Wood, W. & Rünger, D. (2016). Psychology of habit. Annual Review of Psychology, 67, 289–314.",
+  // --- Davranışsal bağımlılık literatürü (Gemini araştırmasından seçilip düzeltildi) ---
+  schultz2016: "Schultz, W. (2016). Dopamine reward prediction error coding. Dialogues in Clinical Neuroscience, 18(1), 23–32.",
+  brand2016: "Brand, M., Young, K. S., Laier, C., Wölfling, K. & Potenza, M. N. (2016). Integrating psychological and neurobiological considerations regarding the development and maintenance of specific Internet-use disorders: An Interaction of Person-Affect-Cognition-Execution (I-PACE) model. Neuroscience & Biobehavioral Reviews, 71, 252–266.",
+  brewer2017: "Brewer, J. (2017). The Craving Mind: From Cigarettes to Smartphones to Love — Why We Get Hooked and How We Can Break Bad Habits. Yale University Press.",
+  volkow2009: "Volkow, N. D., Fowler, J. S., Wang, G.-J., Baler, R. & Telang, F. (2009). Imaging dopamine's role in drug abuse and addiction. Neuropharmacology, 56(Suppl. 1), 3–8.",
+  yan2024: "Yan, T. ve ark. (2024). Intense short-video-based social media use reduces the P300 event-related potential component in a visual oddball experiment: A sign for reduced attention. (PMC10971362)",
+  kuhn2014: "Kühn, S. & Gallinat, J. (2014). Brain structure and functional connectivity associated with pornography consumption: The brain on porn. JAMA Psychiatry, 71(7), 827–834.",
+  voon2014: "Voon, V. ve ark. (2014). Neural correlates of sexual cue reactivity in individuals with and without compulsive sexual behaviours. PLoS ONE, 9(7), e102419.",
+  laier2013: "Laier, C., Schulte, F. P. & Brand, M. (2013). Pornographic picture processing interferes with working memory performance. Journal of Sex Research, 50(7), 642–652.",
+  kraus2018: "Kraus, S. W. ve ark. (2018). Compulsive sexual behaviour disorder in the ICD-11. World Psychiatry, 17(1), 109–110.",
+  difeliceantonio2018: "DiFeliceantonio, A. G. ve ark. (2018). Supra-additive effects of combining fat and carbohydrate on food reward. Cell Metabolism, 28(1), 33–44.",
+  hall2019: "Hall, K. D. ve ark. (2019). Ultra-processed diets cause excess calorie intake and weight gain: An inpatient randomized controlled trial of ad libitum food intake. Cell Metabolism, 30(1), 67–77.",
+  kaelberer2018: "Kaelberer, M. M. ve ark. (2018). A gut-brain neural circuit for nutrient sensory transduction. Science, 361(6408), eaat5236.",
+  lane2024: "Lane, M. M. ve ark. (2024). Ultra-processed food exposure and adverse health outcomes: Umbrella review of epidemiological meta-analyses. BMJ, 384, e077310.",
+  gearhardt2016: "Gearhardt, A. N., Corbin, W. R. & Brownell, K. D. (2016). Development of the Yale Food Addiction Scale Version 2.0. Psychology of Addictive Behaviors, 30(1), 113–121.",
+  wood2016:"Wood, W. & Rünger, D. (2016). Psychology of habit. Annual Review of Psychology, 67, 289–314.",
 };
 
 const INTERVENTIONS = [

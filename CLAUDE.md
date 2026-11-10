@@ -24,12 +24,18 @@ Günlük, haftalık ve aylık **net çalışma süresini** (gerçekten odaklı g
 - Acil akış: seviye → ortam → müdahale (seviye + ortam filtresi) → başlangıç görevi + eğer–o zaman planı + süre → zamanlayıcı.
 - Seviye önerisi: bugün son 4 saatte kayıt varsa ve günün 2. kaydı ya da sonrası ise bir üst seviye önerilir.
 - Kayıtlar başlangıçta oluşturulur; `endTs` bitişte dolar.
+- Kişisel öğrenme (`interventionStats`, `verdict`, `rankInterventions`, `bestFor` in app.js): geri bildirim puanı evet=1, kısmen=0.5, hayır=0. En az 2 denemede hüküm verilir (iyi ≥%70, zayıf ≤%30). Acil listede sıra: kişisel sonuç → kanıt seviyesi. Seviye kartında "Sende en iyisi", Geçmiş'te seviye bazlı "Kişisel protokolün" tablosu gösterilir.
+
+## Kaynak notları
+- Gemini araştırma PDF'i (dopamin, kısa video, porno, UPF) kullanıldı ama abartıları düzeltildi: kesitsel çalışmalar "kanıtladı" diye yazılmaz. Reddit, blog ve kitap özeti siteleri kaynak olarak alınmaz. Kaelberer 2018'in başlığı PDF'te yanlıştı.
+- Doğrulanacak: `yan2024` (P300) künyesi eksik (dergi/sayfa); PDF'teki PMC10971362 numarasıyla kontrol edilmeli.
 
 ## Yol haritası
+- [x] v0.2: kişisel protokol (geri bildirime göre sıralama), 4 yeni rehber modülü (ödül, kısa video, porno, gıda)
 - [x] v0.1 MVP: acil akış, 16 müdahale, 6 rehber modülü, zamanlayıcı, geçmiş + geri bildirim, JSON yedek
-- [ ] GitHub repo + Pages yayını
+- [x] GitHub repo + Pages yayını (EFEKOCAL/kendine_gel)
 - [ ] Kaynak doğrulama turu: künyeleri tek tek kontrol et, DOI ekle
-- [ ] İçerik: uyku, beslenme / işlenmiş gıda, kısa video ve porno özelinde modüller, "dopamin orucu" mitleri
+- [ ] İçerik: uyku modülü, "dopamin orucu" mitleri, önleme modülü (güne hazırlık)
 - [ ] Geçmişte grafikler (odak süresi trendi), seviye ve saat dağılımı
 - [ ] Spor takibi sekmesi
 - [ ] PWA: offline kullanım, ana ekrana ekleme, bildirim
