@@ -1,6 +1,6 @@
 # Kendine Gel
 
-Odak kaydığında, bulunduğun duruma (Seviye 1–4) ve ortama (ev, yurt, okul, kütüphane) göre kaynaklı bir müdahale önerir. Seçtiğin müdahaleden sonra küçük bir başlangıç göreviyle bir odak bloğu başlatırsın. Geçmiş sekmesinden geri bildirim verirsin ve hangi müdahalenin sende işe yaradığını görürsün. Rehber bölümü konuyu kısa kartlarla anlatır.
+Odak kaydığında, bulunduğun duruma (Seviye 1–4) ve ortama (ev, yurt, okul, kütüphane) göre bir müdahale önerir. Seçtiğin müdahaleden sonra küçük bir başlangıç göreviyle bir odak bloğu başlatırsın. Geçmiş sekmesinden geri bildirim verirsin ve hangi müdahalenin sende işe yaradığını görürsün. Rehber bölümü konuyu kısa kartlarla anlatır.
 
 Statik site: build adımı yok. Veriler yalnızca tarayıcıda (localStorage) saklanır.
 
