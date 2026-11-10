@@ -1,0 +1,12 @@
+{
+  "name": "Kendine Gel",
+  "short_name": "Kendine Gel",
+  "description": "Odak kaydığında duruma ve ortama göre kaynaklı müdahale protokolü.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f6f4",
+  "theme_color": "#2f5bea",
+  "lang": "tr",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

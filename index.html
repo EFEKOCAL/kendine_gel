@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kendine Gel</title>
   <meta name="description" content="Odak kaydığında duruma ve ortama göre kaynaklı müdahale protokolü, zamanlayıcı ve geçmiş takibi.">
+  <meta name="theme-color" content="#2f5bea">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -12,16 +16,18 @@
     <a href="#/" class="brand">Kendine Gel</a>
     <nav>
       <a href="#/acil" data-nav="acil">Acil</a>
+      <a href="#/hazirlik" data-nav="hazirlik">Hazırlık</a>
       <a href="#/rehber" data-nav="rehber">Rehber</a>
       <a href="#/gecmis" data-nav="gecmis">Geçmiş</a>
     </nav>
   </header>
   <div id="timerbar" hidden></div>
   <main id="app"></main>
-  <footer>Bu site tıbbi veya psikolojik tavsiye yerine geçmez. Öneriler kaynaklıdır; kanıt seviyeleri her öneride belirtilir.</footer>
+  <footer>Bu site tıbbi veya psikolojik tavsiye yerine geçmez. Öneriler kaynaklıdır; kanıt seviyeleri her öneride belirtilir. <a href="https://github.com/EFEKOCAL/kendine_gel" target="_blank" rel="noopener">Kaynak kodu</a></footer>
   <script src="js/data.js"></script>
   <script src="js/guide.js"></script>
   <script src="js/store.js"></script>
   <script src="js/app.js"></script>
+  <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});</script>
 </body>
 </html>

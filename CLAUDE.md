@@ -17,10 +17,16 @@ Günlük, haftalık ve aylık **net çalışma süresini** (gerçekten odaklı g
 
 ## Yapı
 - `index.html`: iskelet. `css/style.css`: tokenlar `:root` altında, koyu mod desteği var.
-- `js/data.js`: EVIDENCE, ENVS, LEVELS (1–4), SOURCES, INTERVENTIONS, LEVEL4_NOTE.
+- `js/data.js`: EVIDENCE, ENVS, LEVELS (1–4), SOURCES, INTERVENTIONS, PREP (hazırlık listesi), LEVEL4_NOTE.
 - `js/guide.js`: GUIDE modülleri ve kartları.
 - `js/store.js`: localStorage sarmalayıcısı.
-- `js/app.js`: hash router (`#/`, `#/acil`, `#/odak`, `#/rehber[/id]`, `#/gecmis`), akış, zamanlayıcı, geçmiş.
+- `js/app.js`: hash router (`#/`, `#/acil`, `#/blok`, `#/odak`, `#/hazirlik`, `#/rehber[/id]`, `#/gecmis`), akış, zamanlayıcı, mola, geçmiş, grafikler.
+- `sw.js` + `manifest.webmanifest` + `icon.svg`: PWA (ağ öncelikli önbellek, ana ekrana ekleme). Yeni dosya eklenirse `sw.js` içindeki FILES listesine de ekle.
+- Net süre = zamanlayıcıyla geçen blokların `actualMin` toplamı. Günlük hedef `prefs.goalMin` (varsayılan 120). Ana sayfada bugünün ilerlemesi; Geçmiş'te 14 günlük çubuk grafik + hedef çizgisi ve kriz saatleri grafiği (saf CSS).
+- Doğrudan blok (`#/blok`, "Odağım yerinde"): `level: 0`, `intv: null`. Net süreye sayılır; kişisel protokol istatistiğine, seviye önerisine ve geri bildirim formuna girmez.
+- Blok bitince `viewBitti`: 5/10 dk mola (`break`), "aynı görevle devam". Bitişte ses + tarayıcı bildirimi (izin ilk blokta istenir).
+- Hazırlık (`prep`): günlük kontrol listesi, tarih değişince sıfırlanır.
+- Mobil test: headless Chrome pencereyi en az 500px açar; 360px için sayfayı iframe içinde render et.
 - Acil akış: seviye → ortam → müdahale (seviye + ortam filtresi) → başlangıç görevi + eğer–o zaman planı + süre → zamanlayıcı.
 - Seviye önerisi: bugün son 4 saatte kayıt varsa ve günün 2. kaydı ya da sonrası ise bir üst seviye önerilir.
 - Kayıtlar başlangıçta oluşturulur; `endTs` bitişte dolar.
@@ -35,8 +41,8 @@ Günlük, haftalık ve aylık **net çalışma süresini** (gerçekten odaklı g
 - [x] v0.1 MVP: acil akış, 16 müdahale, 6 rehber modülü, zamanlayıcı, geçmiş + geri bildirim, JSON yedek
 - [x] GitHub repo + Pages yayını (EFEKOCAL/kendine_gel)
 - [ ] Kaynak doğrulama turu: künyeleri tek tek kontrol et, DOI ekle
-- [ ] İçerik: uyku modülü, "dopamin orucu" mitleri, önleme modülü (güne hazırlık)
-- [ ] Geçmişte grafikler (odak süresi trendi), seviye ve saat dağılımı
+- [x] v0.3: net süre + günlük hedef, doğrudan blok, mola akışı, Hazırlık listesi, grafikler (14 gün, kriz saatleri), PWA, bildirim, uyku modülü, "zihni boşalt" müdahalesi
+- [ ] İçerik: "dopamin orucu" mitleri, video oyunları modülü
+- [ ] Haftalık / aylık özet (hafta karşılaştırması, en verimli saatler)
 - [ ] Spor takibi sekmesi
-- [ ] PWA: offline kullanım, ana ekrana ekleme, bildirim
-- [ ] Önleyici mod: güne başlarken plan, sürtünme kontrol listesi
+- [ ] Kaydı silme / düzenleme

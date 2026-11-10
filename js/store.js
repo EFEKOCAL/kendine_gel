@@ -1,7 +1,7 @@
 // localStorage sarmalayıcısı. Tüm veri yalnızca kullanıcının tarayıcısında kalır.
 const Store = (() => {
   const KEY = "kendinegel.v1";
-  const empty = () => ({ entries: [], active: null, prefs: { env: null, minutes: 20 }, guide: {} });
+  const empty = () => ({ entries: [], active: null, break: null, prefs: { env: null, minutes: 20, goalMin: 120 }, guide: {}, prep: null });
   let mem = null;
 
   function load() {

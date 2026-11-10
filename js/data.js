@@ -70,7 +70,12 @@ const SOURCES = {
   kaelberer2018: "Kaelberer, M. M. ve ark. (2018). A gut-brain neural circuit for nutrient sensory transduction. Science, 361(6408), eaat5236.",
   lane2024: "Lane, M. M. ve ark. (2024). Ultra-processed food exposure and adverse health outcomes: Umbrella review of epidemiological meta-analyses. BMJ, 384, e077310.",
   gearhardt2016: "Gearhardt, A. N., Corbin, W. R. & Brownell, K. D. (2016). Development of the Yale Food Addiction Scale Version 2.0. Psychology of Addictive Behaviors, 30(1), 113–121.",
-  wood2016:"Wood, W. & Rünger, D. (2016). Psychology of habit. Annual Review of Psychology, 67, 289–314.",
+  masicampo2011: "Masicampo, E. J. & Baumeister, R. F. (2011). Consider it done! Plan making can eliminate the cognitive effects of unfulfilled goals. Journal of Personality and Social Psychology, 101(4), 667–683.",
+  lim2010: "Lim, J. & Dinges, D. F. (2010). A meta-analysis of the impact of short-term sleep deprivation on cognitive variables. Psychological Bulletin, 136(3), 375–389.",
+  hershner2014: "Hershner, S. D. & Chervin, R. D. (2014). Causes and consequences of sleepiness among college students. Nature and Science of Sleep, 6, 73–84.",
+  chang2015: "Chang, A.-M., Aeschbach, D., Duffy, J. F. & Czeisler, C. A. (2015). Evening use of light-emitting eReaders negatively affects sleep, circadian timing, and next-morning alertness. PNAS, 112(4), 1232–1237.",
+  drake2013: "Drake, C., Roehrs, T., Shambroom, J. & Roth, T. (2013). Caffeine effects on sleep taken 0, 3, or 6 hours before going to bed. Journal of Clinical Sleep Medicine, 9(11), 1195–1200.",
+  wood2016: "Wood, W. & Rünger, D. (2016). Psychology of habit. Annual Review of Psychology, 67, 289–314.",
 };
 
 const INTERVENTIONS = [
@@ -93,6 +98,11 @@ const INTERVENTIONS = [
     steps: ["Telefonu sessize al", "Başka odaya ya da çantanın içine koy", "Bilgisayarda dikkat dağıtan sekmeleri kapat"],
     why: "Bir çalışmada telefonun masada yalnızca durması bile çalışma belleği kapasitesini düşürdü (sonraki tekrar çalışmalarında etki daha küçük bulundu). Daha sağlam bulgu: ortamı değiştiren durumsal stratejiler, anlık irade direncinden daha etkilidir.",
     ev: "orta", src: ["ward2017", "duckworth2016"] },
+
+  { id: "bosalt", levels: [1, 2], envs: ALL_ENVS, title: "Zihni boşalt: açık işleri yaz (2 dk)", dur: "2 dk",
+    steps: ["Kafanda dönen her şeyi (mesaj, ödev, alışveriş) bir kâğıda yaz", "Her birine tek satırlık bir \"ne zaman\" ekle", "Kâğıdı kapat, masaya dön"],
+    why: "Tamamlanmamış işler dikkati böler (Zeigarnik etkisi). Deneylerde, işi yapmak değil, yalnızca ne zaman yapılacağını planlamak bile bu zihinsel müdahaleyi ortadan kaldırdı.",
+    ev: "orta", src: ["masicampo2011"] },
 
   { id: "nefes", levels: [1, 2, 4], envs: ALL_ENVS, title: "Döngüsel iç çekiş (cyclic sighing), 5 dk", dur: "5 dk",
     steps: ["Burundan derin nefes al, sonuna kısa ikinci bir nefes ekle", "Ağızdan yavaş ve uzun ver", "5 dk boyunca tekrarla"],
@@ -157,4 +167,17 @@ const INTERVENTIONS = [
     ev: "orta", src: ["berman2008", "kaplan1995"] },
 ];
 
-const LEVEL4_NOTE = "Bu durum haftalarca sık tekrarlıyorsa, uyku ve iştah bozuluyorsa veya hiçbir şeyden keyif alamıyorsan bu bir verimlilik sorunu olmayabilir. Üniversitenin psikolojik danışmanlık birimi veya bir uzmanla görüşmek mantıklı bir sonraki adımdır.";
+// Hazırlık: çalışmaya oturmadan önce. Amaç kriz çıkmadan sürtünmeyi ayarlamak.
+const PREP = [
+  { id: "telefon", text: "Telefon başka odada ya da çantada, sessizde", why: "Masadaki telefon görünür olmasa bile dikkat payı alır.", src: ["ward2017"] },
+  { id: "sekme", text: "Bilgisayarda yalnızca gereken sekmeler açık; oyun / sosyal medya kapalı, çıkış yapılmış", why: "Kaçış seçeneğine adım eklemek anlık dirençten daha etkili.", src: ["duckworth2016"] },
+  { id: "materyal", text: "Masada tek dersin materyali var", why: "Her ek seçenek, başlama kararını geciktirir.", src: ["wood2016"] },
+  { id: "gorev", text: "İlk görev yazılı ve küçük (\"3. bölüm, ilk 2 sayfa\")", why: "Somut görev, başlama eşiğini düşürür.", src: ["gollwitzer1999"] },
+  { id: "plan", text: "Eğer–o zaman planı hazır (\"telefona uzanırsam → çantaya koyarım\")", why: "Önceden verilmiş karar, kriz anında irade gerektirmez.", src: ["gollwitzer1999"] },
+  { id: "su", text: "Masada su var, atıştırmalık yok", why: "Hafif dehidrasyon dikkati düşürür; atıştırmalık her sıkılmada küçük bir ödül sunar.", src: ["ganio2011"] },
+  { id: "beden", text: "Son 2 saatte hareket ettin ya da en az kısa bir yürüyüş yaptın", why: "Akut egzersiz sonrası bilişsel performans küçük ama tutarlı artar.", src: ["chang2012"] },
+  { id: "kafein", text: "Kafein zamanı uygun (yatıştan 6+ saat önce, kaygı yok)", why: "Geç kafein uykuyu, uyku da ertesi günün odağını bozar.", src: ["drake2013"] },
+  { id: "uyku", text: "Dün gece yeterli uyudun (yoksa bloklarını kısa tut: 10–15 dk)", why: "Uykusuzluk en çok sürekli dikkati düşürür.", src: ["lim2010"] },
+];
+
+const LEVEL4_NOTE ="Bu durum haftalarca sık tekrarlıyorsa, uyku ve iştah bozuluyorsa veya hiçbir şeyden keyif alamıyorsan bu bir verimlilik sorunu olmayabilir. Üniversitenin psikolojik danışmanlık birimi veya bir uzmanla görüşmek mantıklı bir sonraki adımdır.";

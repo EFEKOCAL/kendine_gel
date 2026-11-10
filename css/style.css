@@ -116,7 +116,45 @@ input:not([type=radio]):not([type=checkbox]):not([type=range]):not([type=file]) 
 .fbform form { display: grid; gap: 10px; margin-top: 8px; }
 .io label.btn { display: inline-flex; }
 
+/* Ana sayfa: bugün + eylemler */
+.today { margin-top: 8px; }
+.goal-row { display: flex; justify-content: space-between; align-items: baseline; }
+.bar.big { height: 12px; }
+.bar > div.hit { background: var(--strong); }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.actions .btn { padding: 16px 12px; }
+
+/* Hazırlık listesi */
+.prep { display: grid; gap: 8px; }
+.prep-item { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; font-weight: 500; }
+.prep-item.on { border-color: var(--strong); }
+.prep-item.on .prep-text { text-decoration: line-through; color: var(--muted); }
+.prep-item input { margin-top: 4px; width: 18px; height: 18px; flex: none; }
+.prep-item > span { display: grid; gap: 2px; }
+.prep-why { font-size: .82rem; color: var(--muted); font-weight: 400; }
+
+/* Grafikler (saf CSS) */
+.chart { position: relative; display: flex; align-items: flex-end; gap: 4px; height: 120px; border-bottom: 1px solid var(--line); margin: 8px 0 24px; }
+.chart .col { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; min-width: 0; }
+.chart .colbar { width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 2px; opacity: .85; }
+.chart .colbar.hit { background: var(--strong); }
+.chart .colbar.warn { background: var(--l3); }
+.chart .col > span { position: absolute; bottom: -18px; font-size: .7rem; color: var(--muted); }
+.chart .goal-line { position: absolute; left: 0; right: 0; bottom: var(--goal); border-top: 1px dashed var(--text); opacity: .5; pointer-events: none; }
+.chart.hours { height: 80px; gap: 2px; }
+html, body { overflow-x: hidden; }
+.goal-form { display: flex; gap: 8px; align-items: flex-end; margin: 10px 0 18px; }
+.goal-form label { flex: 1; max-width: 220px; }
+.clock.small { font-size: clamp(2.2rem, 10vw, 3.5rem); }
+
+.stats { grid-template-columns: repeat(3, 1fr); }
+
 @media (max-width: 520px) {
+  .top { flex-wrap: wrap; gap: 6px; padding: 8px 12px; }
+  .top nav { width: 100%; justify-content: space-between; }
+  .top nav a { padding: 6px 8px; font-size: .95rem; }
+  .actions { grid-template-columns: 1fr; }
+  .chart .col > span:empty { display: none; }
   .stats { grid-template-columns: 1fr 1fr 1fr; } .stats b { font-size: 1.2rem; }
   .levels { grid-template-columns: 1fr; }
 }
