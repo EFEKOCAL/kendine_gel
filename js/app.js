@@ -507,7 +507,8 @@ function viewBitti() {
         ${last.lateClose ? `<p class="small">Blok, uygulama kapalıyken bitti. Süreyi Geçmiş'ten düzeltebilirsin.</p>` : ""}
         <p>Bu bloğun ne kadarı gerçekten odaklıydı?</p>
         <div class="mins center">${FOCUS_OPTS.map(([v, l]) => `<button class="chip" data-fs="${v}">${l}</button>`).join("")}</div>
-      </div>` : `<p class="muted small">Odak: ${focusLabel(last.focusShare)}</p>`}
+      </div>` : `<p class="muted small">Odak: ${focusLabel(last.focusShare)}</p>
+        ${last.focusShare <= 0.25 ? `<p class="note">Düşük odak bir veri, karakter kanıtı değil. Sıradaki blok 10 dk; hâlâ zor geliyorsa önce <a href="#/acil">Protokol</a>'den bir müdahale seç.</p>` : ""}`}
       ${goalBar(todayEntries(), goalMin())}
       ${br ? `<div class="clock small" id="clock">${mmss(br.end - Date.now())}</div><p class="muted">Mola. Uyaranı azalt: yürü, su iç, uzağa bak.</p>`
            : `<p>Mola uyaransız olmalı: yürü, su iç, uzağa bak. Kısa video mola değil, yeni bir uyarandır.</p>`}
@@ -534,7 +535,8 @@ function viewBitti() {
   if (b10) b10.onclick = () => { saveNext(); startBreak(10); viewBitti(); };
   document.getElementById("again").onclick = () => {
     unlockAudio(); saveNext();
-    startSession({ level: 0, env: last.env, intv: null, task: nt.value.trim() || last.task, plan: last.plan, min: last.plannedMin });
+    const low = last.focusShare != null && last.focusShare <= 0.25;
+    startSession({ level: 0, env: last.env, intv: null, task: nt.value.trim() || last.task, plan: last.plan, min: low ? Math.min(10, last.plannedMin) : last.plannedMin });
     viewOdak();
   };
   const ny = document.getElementById("nYes"), nn = document.getElementById("nNo");
@@ -717,8 +719,9 @@ function viewGecmis() {
     <div class="row io">
       <button class="btn" id="exp">Veriyi dışa aktar (JSON)</button>
       <button class="btn" id="impBtn">İçe aktar</button><input type="file" id="imp" accept="application/json,.json" hidden>
+      <button class="btn danger" id="wipe">Tüm veriyi sil</button>
     </div>
-    <p class="muted small">Veriler yalnızca bu tarayıcıda saklanır. Cihaz değiştirirken dışa aktar / içe aktar kullan.</p>`;
+    <p class="muted small">Veriler yalnızca bu tarayıcıda saklanır; hiçbir sunucuya gönderilmez. Cihaz değiştirirken dışa aktar / içe aktar kullan. Yedek dosyası kayma kayıtlarını, notlarını ve tetikleyicileri düz metin olarak içerir: paylaşılan bir bilgisayarda indirme klasöründe bırakma. Bu cihazı başkası da kullanıyorsa işin bitince tarayıcının gizli penceresini tercih et ya da veriyi sil.</p>`;
 
   document.getElementById("goalForm").onsubmit = ev => {
     ev.preventDefault(); const g = +new FormData(ev.target).get("goal");
@@ -747,6 +750,13 @@ function viewGecmis() {
   });
   document.getElementById("exp").onclick = () => { exportData(); };
   document.getElementById("impBtn").onclick = () => document.getElementById("imp").click();
+  document.getElementById("wipe").onclick = () => {
+    const n = Store.get().entries.length;
+    if (!confirm(`Bu tarayıcıdaki ${n} kayıt, ayarlar ve rehber ilerlemesi kalıcı olarak silinecek. Geri alınamaz. Önce dışa aktarmak istersen İptal'e bas.`)) return;
+    if (!confirm("Son onay: tüm veriler silinsin mi?")) return;
+    Store.replace(Store.parseImport('{"entries":[]}').data);
+    location.hash = "#/";
+  };
   document.getElementById("imp").onchange = async ev => {
     try {
       const { data, dropped } = Store.parseImport(await ev.target.files[0].text());
