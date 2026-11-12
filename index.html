@@ -14,16 +14,18 @@
 <body>
   <header class="top">
     <a href="#/" class="brand">Kendine Gel</a>
-    <nav>
-      <a href="#/acil" data-nav="acil">Acil</a>
+    <nav aria-label="Ana menü">
+      <a href="#/blok" data-nav="blok">Blok</a>
+      <a href="#/acil" data-nav="acil">Protokol</a>
       <a href="#/hazirlik" data-nav="hazirlik">Hazırlık</a>
       <a href="#/rehber" data-nav="rehber">Rehber</a>
       <a href="#/gecmis" data-nav="gecmis">Geçmiş</a>
     </nav>
   </header>
+  <div id="notice" role="alert" hidden>Kaydedilemedi: tarayıcı depolaması dolu veya kapalı. Geçmiş'ten veriyi dışa aktar.</div>
   <div id="timerbar" hidden></div>
   <main id="app"></main>
-  <footer>Bu site tıbbi veya psikolojik tavsiye yerine geçmez. Öneriler kaynaklıdır; kanıt seviyeleri her öneride belirtilir. <a href="https://github.com/EFEKOCAL/kendine_gel" target="_blank" rel="noopener">Kaynak kodu</a></footer>
+  <footer>Bu site tıbbi veya psikolojik tavsiye yerine geçmez. Kendine zarar verme düşüncen varsa: <b>112</b>. Davranışsal bağımlılık desteği: YEDAM <b>115</b>. <a href="#/rehber/belirti">Alışkanlık mı, belirti mi?</a> · <a href="https://github.com/EFEKOCAL/kendine_gel" target="_blank" rel="noopener">Kaynak kodu</a></footer>
   <script src="js/data.js"></script>
   <script src="js/guide.js"></script>
   <script src="js/store.js"></script>
