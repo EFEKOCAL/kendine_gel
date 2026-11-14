@@ -22,8 +22,10 @@ self.addEventListener("fetch", e => {
       .catch(() => e.request.mode === "navigate" ? caches.match("./index.html") : Response.error())
   );
 });
-// Bildirime tıklanınca açık sekmeyi öne getir.
+// Bildirime tıklanınca ya da bildirim kapatılınca alarm susar; tıklamada açık sekme öne gelir.
+const stopAlarm = () => self.clients.matchAll({ type: "window" }).then(cs => { cs.forEach(c => c.postMessage("alarm-stop")); return cs; });
 self.addEventListener("notificationclick", e => {
   e.notification.close();
-  e.waitUntil(self.clients.matchAll({ type: "window" }).then(cs => cs[0] ? cs[0].focus() : self.clients.openWindow("./#/odak")));
+  e.waitUntil(stopAlarm().then(cs => cs[0] ? cs[0].focus() : self.clients.openWindow("./#/odak")));
 });
+self.addEventListener("notificationclose", e => e.waitUntil(stopAlarm()));

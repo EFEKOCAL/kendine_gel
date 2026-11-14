@@ -59,21 +59,46 @@ function crisisHours() {
 // ---------- Ses, bildirim, ekran kilidi ----------
 let audio = null;
 function unlockAudio() { try { audio ||= new AudioContext(); audio.resume(); } catch {} }
-function beep(n = 1) {
+// Alarm: kullanıcı susturana kadar çalar. Desen ses tamponuna yazılıp döngüye alınır;
+// böylece arka plan sekmesinde zamanlayıcılar yavaşlasa da ses aralıksız sürer.
+// Susturma: alt şerit, sayfada herhangi bir dokunuş/tuş, bildirime dokunma veya bildirimi kapatma.
+let alarm = null;
+const $alarm = document.getElementById("alarm");
+const alarmChan = "BroadcastChannel" in window ? new BroadcastChannel("kendinegel-alarm") : null;
+function startAlarm(n, text) {
+  stopAlarm(false);
   try {
     unlockAudio();
+    const sr = audio.sampleRate, buf = audio.createBuffer(1, Math.round(sr * 2), sr), d = buf.getChannelData(0), dur = 0.3;
     for (let k = 0; k < n; k++) {
-      const t = audio.currentTime + k * 0.5, o = audio.createOscillator(), g = audio.createGain();
-      o.frequency.value = 660; o.connect(g); g.connect(audio.destination);
-      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.3, t + 0.02); g.gain.linearRampToValueAtTime(0, t + 0.3);
-      o.start(t); o.stop(t + 0.32);
+      const off = Math.round(k * 0.45 * sr);
+      for (let i = 0; i < dur * sr; i++) {
+        const t = i / sr, env = Math.min(1, t / 0.02, (dur - t) / 0.05);
+        d[off + i] = 0.3 * env * Math.sin(2 * Math.PI * 660 * t);
+      }
     }
+    const src = audio.createBufferSource();
+    src.buffer = buf; src.loop = true; src.connect(audio.destination); src.start();
+    alarm = src;
   } catch {}
+  $alarm.querySelector("span").textContent = text;
+  $alarm.hidden = false;
 }
+function stopAlarm(broadcast = true) {
+  if (alarm) { try { alarm.stop(); } catch {} alarm = null; }
+  $alarm.hidden = true;
+  if (broadcast) alarmChan?.postMessage("stop");
+  navigator.serviceWorker?.getRegistration().then(r => r?.getNotifications({ tag: "kendinegel" })).then(ns => ns?.forEach(x => x.close())).catch(() => {});
+}
+const silence = () => { if (!$alarm.hidden) stopAlarm(); };
+document.addEventListener("pointerdown", silence, true);
+document.addEventListener("keydown", silence, true);
+if (alarmChan) alarmChan.onmessage = e => { if (e.data === "stop") stopAlarm(false); };
+navigator.serviceWorker?.addEventListener("message", e => { if (e.data === "alarm-stop") stopAlarm(); });
 // Android Chrome'da new Notification() çalışmaz; servis çalışanı üzerinden gösterilir.
 async function notify(title, body) {
   if (!("Notification" in window) || Notification.permission !== "granted") return;
-  try { const r = await navigator.serviceWorker?.getRegistration(); if (r) return r.showNotification(title, { body, tag: "kendinegel", icon: "icon.svg" }); } catch {}
+  try { const r = await navigator.serviceWorker?.getRegistration(); if (r) return r.showNotification(title, { body, tag: "kendinegel", icon: "icon.svg", requireInteraction: true, renotify: true }); } catch {}
   try { new Notification(title, { body }); } catch {}
 }
 let wakeLock = null;
@@ -93,6 +118,34 @@ function goalBar(entries, goal) {
   return `<div class="goal-row"><span><b>${fmtMin(net)}</b> / ${fmtMin(goal)} net</span><span class="muted">%${pct}</span></div>
     <div class="bar big" role="progressbar" aria-valuemin="0" aria-valuemax="${goal}" aria-valuenow="${net}" aria-label="Bugünkü net süre"><div class="${net >= goal ? "hit" : ""}" style="width:${pct}%"></div></div>
     ${tm !== net ? `<p class="muted small">Zamanlayıcı: ${fmtMin(tm)}. Net süre, blok sonunda verdiğin odak oranıyla hesaplanır.</p>` : ""}`;
+}
+
+// Çalışma süresi: bloğun açık kaldığı sürenin tamamı (kullanıcıya güvenilir; odak oranı düşülmez).
+// Süren blok canlı eklenir. Net süre bundan ayrı tutulur (odak oranıyla çarpılmış hâli).
+function workTotals() {
+  const done = doneEntries(), a = Store.get().active;
+  const t = { today: timerMinutes(todayEntries()), w: timerMinutes(within(done, 7)), m: timerMinutes(within(done, 30)), all: timerMinutes(done) };
+  if (a) {
+    const live = Math.floor((Math.min(Date.now(), a.end) - a.start) / 60e3);
+    for (const k in t) if (k !== "today" || dayKey(a.start) === todayKey()) t[k] += live;
+  }
+  return t;
+}
+const fmtHours = m => m >= 600 ? `${Math.round(m / 6) / 10} sa`.replace(".", ",") : fmtMin(m);
+function workCard() {
+  const t = workTotals(), live = !!Store.get().active;
+  const cell = (k, l) => `<div><b data-wt="${k}">${fmtHours(t[k])}</b><span>${l}</span></div>`;
+  return `<section class="card work">
+    <p class="muted small">Çalışma süren${live ? " · blok sürüyor, süre canlı ekleniyor" : ""}</p>
+    <div class="stats four">${cell("today", "bugün")}${cell("w", "son 7 gün")}${cell("m", "son 30 gün")}${cell("all", "toplam")}</div>
+    <p class="muted small">Başlattığın blokların açık kaldığı süre. Durdurursan o ana kadarki süre eklenir.</p>
+  </section>`;
+}
+function refreshWorkCard() {
+  const els = document.querySelectorAll("[data-wt]");
+  if (!els.length) return;
+  const t = workTotals();
+  els.forEach(el => el.textContent = fmtHours(t[el.dataset.wt]));
 }
 
 function weekSummary(start) {
@@ -221,6 +274,7 @@ function viewHome() {
       <p class="muted small">Bugün</p>
       ${goalBar(todayEntries(), goalMin())}
     </section>
+    ${workCard()}
     ${planCard()}
     ${weeklyCard()}
     ${needBackup ? `<p class="note">Veriler yalnızca bu tarayıcıda. Son yedek: ${s.prefs.lastExport ? `${Math.floor((Date.now() - s.prefs.lastExport) / DAY)} gün önce` : "hiç alınmadı"}. <button class="link inline" id="quickExport">Şimdi dışa aktar</button></p>` : ""}
@@ -466,7 +520,7 @@ function viewOdak() {
       <div class="clock" id="clock">${mmss(a.end - Date.now())}</div>
       <div class="bar"><div id="prog"></div></div>
       <div id="distrBox" class="distr"><button class="btn" id="distr">Dikkatim dağıldı</button></div>
-      <div class="row"><button class="btn subtle" id="stopEarly">Erken bitir</button></div>
+      <div class="row"><button class="btn" id="stopEarly">Durdur</button></div>
       <label class="check small muted"><input type="checkbox" id="wl" ${s.prefs.wakeLock ? "checked" : ""}> Ekranı açık tut</label>
       <p class="muted small">Telefon kilitlenirse bitiş sesi gecikebilir; süre yine doğru sayılır.</p>
       <a class="link" href="#/">Ana sayfa</a>
@@ -487,7 +541,8 @@ function viewOdak() {
   document.getElementById("wl").onchange = ev => { Store.update(d => d.prefs.wakeLock = ev.target.checked); syncWakeLock(); };
   document.getElementById("stopEarly").onclick = () => {
     if (Date.now() - a.start < 60e3) { if (confirm("Blok 1 dakikadan kısa. İptal edilsin mi? Kayıt tutulmaz.")) { cancelSession(); location.hash = "#/"; } return; }
-    if (confirm("Bloğu şimdi bitir?")) { finishSession(false); viewBitti(); }
+    const m = Math.round((Date.now() - a.start) / 60e3);
+    if (confirm(`Bloğu durdur? Geçen ${fmtMin(m)} çalışma süresine eklenir.`)) { finishSession(false); viewBitti(); }
   };
   syncWakeLock();
 }
@@ -501,7 +556,7 @@ function viewBitti() {
   const askNotif = "Notification" in window && Notification.permission === "default" && !s.prefs.notifAsked;
   $app.innerHTML = `
     <section class="focus">
-      <h2>${last.completed ? "Blok tamamlandı." : "Blok erken bitti."}</h2>
+      <h2>${last.completed ? "Blok tamamlandı." : "Blok durduruldu."}</h2>
       <p class="muted">${esc(last.task)} · ${last.actualMin} dk${dn ? ` · ${dn} dağılma${dk ? ` (en çok ${esc(DISTR.find(x => x[0] === dk[0])[1].toLowerCase())})` : ""}` : ""}</p>
       ${last.focusShare == null ? `<div class="card ask">
         ${last.lateClose ? `<p class="small">Blok, uygulama kapalıyken bitti. Süreyi Geçmiş'ten düzeltebilirsin.</p>` : ""}
@@ -547,11 +602,11 @@ function viewBitti() {
 function tick() {
   const s = Store.get(), a = s.active;
   if (a && Date.now() >= a.end) {
-    finishSession(true); beep(2); notify("Blok tamamlandı", "Mola: uyaranı azalt. Sonra aynı görevle devam et.");
+    finishSession(true); startAlarm(2, "Blok tamamlandı"); notify("Blok tamamlandı", "Mola: uyaranı azalt. Sonra aynı görevle devam et.");
     if (location.hash === "#/odak") { document.body.classList.remove("focusing"); viewBitti(); }
   }
   if (s.break && Date.now() >= s.break.end) {
-    Store.update(d => d.break = null); beep(1); notify("Mola bitti", "Aynı görevle devam et.");
+    Store.update(d => d.break = null); startAlarm(1, "Mola bitti"); notify("Mola bitti", "Aynı görevle devam et.");
     if (location.hash === "#/odak") viewBitti();
   }
   const act = Store.get().active, br = Store.get().break;
@@ -570,6 +625,7 @@ function tick() {
     if (c) c.textContent = mmss(left);
     document.title = onOdak ? `${mmss(left)} · Mola` : "Kendine Gel";
   } else document.title = "Kendine Gel";
+  if (act) refreshWorkCard();
   $notice.hidden = !Store.failed();
 }
 
@@ -666,6 +722,9 @@ function viewGecmis() {
   $app.innerHTML = `
     <h2>Geçmiş</h2>
     ${heavyPattern() ? `<p class="note warn">Son iki haftada sık ve ağır kayma kaydın var. Bu tek başına bir şey göstermez; ama uyku, ruh hâli veya dikkatle ilgili sürekli bir sorun olabilir. <a href="#/rehber/belirti">Alışkanlık mı, belirti mi?</a></p>` : ""}
+    ${workCard()}
+    <p class="muted small" id="persistNote"></p>
+    <h3>Net süre (odak oranıyla)</h3>
     <div class="stats">
       <div><b>${fmtMin(netMinutes(todayEntries()))}</b><span>bugün net</span></div>
       <div><b>${fmtMin(netMinutes(last7))}</b><span>7 gün net</span></div>
@@ -723,6 +782,13 @@ function viewGecmis() {
     </div>
     <p class="muted small">Veriler yalnızca bu tarayıcıda saklanır; hiçbir sunucuya gönderilmez. Cihaz değiştirirken dışa aktar / içe aktar kullan. Yedek dosyası kayma kayıtlarını, notlarını ve tetikleyicileri düz metin olarak içerir: paylaşılan bir bilgisayarda indirme klasöründe bırakma. Bu cihazı başkası da kullanıyorsa işin bitince tarayıcının gizli penceresini tercih et ya da veriyi sil.</p>`;
 
+  // Kalıcı depolama: tarayıcı yer açmak için bu sitenin verisini kendiliğinden silmez (kullanıcı silebilir).
+  (async () => {
+    const pn = document.getElementById("persistNote"); if (!pn || !navigator.storage?.persist) return;
+    let ok = false; try { ok = await navigator.storage.persisted() || await navigator.storage.persist(); } catch {}
+    pn.textContent = ok ? "Kayıtlar bu tarayıcıda kalıcı depoda; tarayıcı yer açmak için silmez. Başka cihaza taşımak için dışa aktar."
+      : "Kayıtlar bu tarayıcıda. Tarayıcı verisini silersen gider; düzenli dışa aktar.";
+  })();
   document.getElementById("goalForm").onsubmit = ev => {
     ev.preventDefault(); const g = +new FormData(ev.target).get("goal");
     if (g >= 15 && g <= 900) { Store.update(d => d.prefs.goalMin = g); viewGecmis(); }
