@@ -281,7 +281,7 @@ function viewHome() {
     ${needBackup ? `<p class="note">Veriler yalnızca bu tarayıcıda. Son yedek: ${s.prefs.lastExport ? `${Math.floor((Date.now() - s.prefs.lastExport) / DAY)} gün önce` : "hiç alınmadı"}. <button class="link inline" id="quickExport">Şimdi dışa aktar</button></p>` : ""}
     <div class="grid2">
       <a class="tile" href="#/hazirlik"><h3>Hazırlık <span class="muted small">${prepDone}/${PREP.length}</span></h3><p>Oturmadan önce 2 dakikalık kontrol listesi. Odak kaymadan önce sürtünmeyi ayarla.</p></a>
-      <a class="tile" href="#/rehber"><h3>Rehber</h3><p>Kısa kartlarla: neden kaçıyoruz, ödül sistemi, yüksek dopaminli alışkanlıklar, uyku, başlama.</p></a>
+      <a class="tile" href="#/rehber"><h3>Rehber</h3><p>Kaynaklı kısa yazılar: neden kaçıyoruz, ödül sistemi, telefon ve kısa video, uyku, verimli çalışma.</p></a>
       <a class="tile" href="#/gecmis"><h3>Geçmiş ${pending ? `<span class="pill">${pending} geri bildirim bekliyor</span>` : ""}</h3><p>Net süre, haftalar, kayma saatlerin, dağılma nedenlerin ve sende işe yarayan müdahaleler.</p></a>
     </div>`;
   bindIntro(); bindPlan(); bindWeekly();
@@ -881,57 +881,145 @@ function exportData() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// ---------- Rehber ----------
-const guideState = { m: null, i: 0, draw: null };
-function viewRehber(modId) {
-  if (!modId) {
-    guideState.m = null;
-    const prog = Store.get().guide;
-    $app.innerHTML = `<h2>Rehber</h2><p class="muted">Her modül 3–5 kısa karttan oluşur. Bir kart, bir fikir. Ok tuşlarıyla ilerleyebilirsin.</p>
-      <div class="mods">${GUIDE.map((m, i) => {
-        const seen = prog[m.id] ?? -1;
-        return `<a class="tile" href="#/rehber/${m.id}"><span class="lvnum">Modül ${i + 1} · ${m.cards.length} kart${seen + 1 >= m.cards.length ? " · okundu" : ""}</span><h3>${esc(m.title)}</h3>
-          <div class="bar"><div style="width:${100 * (seen + 1) / m.cards.length}%"></div></div></a>`; }).join("")}</div>`;
-    return;
-  }
-  const m = byId(GUIDE, modId); if (!m) return viewRehber();
-  const idx = GUIDE.indexOf(m), nextMod = GUIDE[idx + 1];
-  guideState.m = m;
-  guideState.i = Math.min(Store.get().guide[m.id] ?? 0, m.cards.length - 1);
-  const draw = () => {
-    const i = guideState.i, c = m.cards[i];
-    if ((Store.get().guide[m.id] ?? -1) < i) Store.update(d => d.guide[m.id] = i);
-    $app.innerHTML = `
-      <a class="link" href="#/rehber">← Modüller</a>
-      <p class="muted">${esc(m.title)} · ${i + 1}/${m.cards.length}</p>
-      <div class="bar"><div style="width:${100 * (i + 1) / m.cards.length}%"></div></div>
-      <article class="gcard"><h2>${esc(c.h)}</h2><p>${esc(c.body)}</p>
+// ---------- Rehber (blog) ----------
+// Liste: arama + kategori, "Buradan başla" sırası, "kaldığın yer". Yazı: içindekiler, numaralı atıflar,
+// "Ayrıntı", kanıt durumu, "Bu hafta dene", kaynakça, önceki/sonraki ve ilgili yazılar.
+// İlerleme: ekranda görülen en ileri bölüm Store.guide[id]'ye yazılır.
+const guideUI = { q: "", cat: "" };
+let guideCleanup = null;
+const catOf = m => byId(GUIDE_CATS, m.cat);
+const guideSeen = m => Store.get().guide[m.id] ?? -1;
+const guideDone = m => guideSeen(m) + 1 >= m.cards.length;
+const readMin = m => Math.max(2, Math.round([m.lede, ...m.cards.flatMap(c => [c.body, c.more || ""])].join(" ").split(/\s+/).length / 170));
+const guideStatus = m => guideDone(m) ? `<span class="gstat done">Okundu</span>` : guideSeen(m) >= 0 ? `<span class="gstat">Yarım kaldı</span>` : "";
+const doiLink = id => {
+  const s = SOURCES[id] || id, i = s.indexOf("https://doi.org/");
+  if (i < 0) return esc(s);
+  const url = s.slice(i).trim();
+  return `${esc(s.slice(0, i))}<a href="${esc(url)}" target="_blank" rel="noopener">${esc(url.replace("https://", ""))}</a>`;
+};
+const postRow = m => `<a class="post" href="#/rehber/${m.id}">
+    <span class="post-meta">${esc(catOf(m).title)} · ${readMin(m)} dk okuma · ${m.cards.length} bölüm ${guideStatus(m)}</span>
+    <h3>${esc(m.title)}</h3><p>${esc(m.lede)}</p></a>`;
+const guideHay = m => [m.title, m.lede, ...m.cards.flatMap(c => [c.h, c.body, c.key || ""])].join(" ").toLocaleLowerCase("tr");
+
+function viewRehber(modId, secIdx) {
+  if (!modId) return viewRehberList();
+  const m = byId(GUIDE, modId); if (!m) return viewRehberList();
+  const idx = GUIDE.indexOf(m), prev = GUIDE[idx - 1], next = GUIDE[idx + 1], cat = catOf(m);
+  // Atıf numaraları: yazıdaki ilk geçiş sırasına göre
+  const refs = [];
+  m.cards.forEach(c => (c.src || []).forEach(s => { if (!refs.includes(s)) refs.push(s); }));
+  const cite = c => c.src && c.src.length ? `<span class="cites">${c.src.map(s => { const n = refs.indexOf(s) + 1;
+    return `<a href="#" class="cite" data-ref="${n}" aria-label="Kaynak ${n}">${n}</a>`; }).join("")}</span>` : "";
+  const related = GUIDE.filter(g => g.cat === m.cat && g !== m);
+  const pathPos = GUIDE_PATH.indexOf(m.id);
+  $app.innerHTML = `<div class="readbar" aria-hidden="true"><div></div></div>
+    <article class="post-full">
+      <nav class="crumbs"><a href="#/rehber">Rehber</a> <span aria-hidden="true">›</span> ${esc(cat.title)}</nav>
+      <header class="post-head">
+        <h1>${esc(m.title)}</h1>
+        <p class="lede">${esc(m.lede)}</p>
+        <p class="post-meta">${readMin(m)} dk okuma · ${m.cards.length} bölüm · ${refs.length} kaynak${pathPos >= 0 ? ` · Başlangıç yolu ${pathPos + 1}/${GUIDE_PATH.length}` : ""}</p>
+      </header>
+      ${m.cards.length > 3 ? `<details class="toc" open><summary>İçindekiler</summary><ol>${m.cards.map((c, i) =>
+        `<li><a href="#" data-sec="${i}">${esc(c.h)}</a></li>`).join("")}</ol></details>` : ""}
+      ${m.cards.map((c, i) => `<section class="psec" id="sec-${i}" data-i="${i}">
+        <h2><span class="secnum">${i + 1}</span>${esc(c.h)}</h2>
+        <p>${esc(c.body)}${cite(c)}</p>
+        ${c.more ? `<details class="more"><summary>Ayrıntı</summary><p>${esc(c.more)}</p></details>` : ""}
         ${c.key ? `<p class="key">${esc(c.key)}</p>` : ""}
-        ${c.src ? `<details><summary>Kaynaklar</summary>${srcList(c.src)}</details>` : ""}</article>
-      <div class="row"><button class="btn" id="prev" ${i === 0 ? "disabled" : ""}>← Önceki</button>
-        ${i < m.cards.length - 1 ? `<button class="btn primary" id="next">Sonraki →</button>`
-          : nextMod ? `<a class="btn primary" href="#/rehber/${nextMod.id}">Sonraki modül: ${esc(nextMod.title)} →</a>` : `<a class="btn primary" href="#/rehber">Modülleri bitirdin</a>`}</div>`;
-    document.getElementById("prev").onclick = () => { if (guideState.i > 0) { guideState.i--; draw(); } };
-    const n = document.getElementById("next"); if (n) n.onclick = () => { guideState.i++; draw(); };
+      </section>`).join("")}
+      ${m.sure ? `<aside class="sure"><h2>Ne kadar emin olabiliriz?</h2><p>${esc(m.sure)}</p></aside>` : ""}
+      ${m.try && m.try.length ? `<aside class="try"><h2>Bu hafta dene</h2><ul>${m.try.map(t =>
+        `<li>${esc(t.t)}${t.href ? ` <a href="${t.href}">Aç →</a>` : ""}</li>`).join("")}</ul></aside>` : ""}
+      ${refs.length ? `<section class="refs" id="refs"><h2>Kaynaklar</h2><ol>${refs.map((s, i) => `<li id="ref-${i + 1}">${doiLink(s)}</li>`).join("")}</ol></section>` : ""}
+      <div id="postEnd"></div>
+      <nav class="post-nav">
+        ${prev ? `<a class="post-nav-a" href="#/rehber/${prev.id}"><span>← Önceki</span>${esc(prev.title)}</a>` : "<span></span>"}
+        ${next ? `<a class="post-nav-a next" href="#/rehber/${next.id}"><span>Sonraki →</span>${esc(next.title)}</a>` : `<a class="post-nav-a next" href="#/rehber"><span>Bitti</span>Tüm yazılar</a>`}
+      </nav>
+      ${related.length ? `<section class="related"><h2>${esc(cat.title)} başlığında diğer yazılar</h2><div class="posts">${related.map(postRow).join("")}</div></section>` : ""}
+    </article>`;
+
+  const secs = [...$app.querySelectorAll(".psec")];
+  const mark = i => { if (guideSeen(m) < i) Store.update(d => d.guide[m.id] = Math.max(d.guide[m.id] ?? -1, i)); };
+  $app.querySelectorAll("[data-sec]").forEach(a => a.onclick = e => { e.preventDefault(); secs[+a.dataset.sec].scrollIntoView({ behavior: "smooth" }); });
+  $app.querySelectorAll(".cite").forEach(a => a.onclick = e => {
+    e.preventDefault();
+    const li = document.getElementById("ref-" + a.dataset.ref); if (!li) return;
+    li.scrollIntoView({ behavior: "smooth", block: "center" }); li.classList.remove("flash"); void li.offsetWidth; li.classList.add("flash");
+  });
+  // Okunan bölüm: bölüm ekranın üst yarısına girince sayılır; yazı sonu görülünce tamamı.
+  let io = null;
+  if ("IntersectionObserver" in window) {
+    io = new IntersectionObserver(es => es.forEach(e => {
+      if (!e.isIntersecting) return;
+      if (e.target.id === "postEnd") mark(m.cards.length - 1); else mark(+e.target.dataset.i);
+    }), { rootMargin: "0px 0px -50% 0px" });
+    secs.forEach(s => io.observe(s)); io.observe(document.getElementById("postEnd"));
+  } else mark(m.cards.length - 1);
+  const bar = $app.querySelector(".readbar > div");
+  const onScroll = () => {
+    const el = $app.querySelector(".post-full"); if (!el || !bar) return;
+    const r = el.getBoundingClientRect(), total = r.height - innerHeight;
+    bar.style.width = `${Math.min(100, Math.max(0, total > 0 ? -r.top / total * 100 : 100))}%`;
   };
-  guideState.draw = draw;
-  draw();
+  addEventListener("scroll", onScroll, { passive: true }); onScroll();
+  guideCleanup = () => { removeEventListener("scroll", onScroll); io?.disconnect(); };
+  const target = secs[+secIdx];
+  if (target) setTimeout(() => target.scrollIntoView(), 0);
 }
-document.addEventListener("keydown", e => {
-  const g = guideState; if (!g.m || !location.hash.startsWith("#/rehber/") || e.target.closest("input, textarea, select")) return;
-  if (e.key === "ArrowRight" && g.i < g.m.cards.length - 1) { g.i++; g.draw(); }
-  if (e.key === "ArrowLeft" && g.i > 0) { g.i--; g.draw(); }
-});
+
+function viewRehberList() {
+  const inProgress = GUIDE.filter(m => guideSeen(m) >= 0 && !guideDone(m));
+  const doneN = GUIDE.filter(guideDone).length;
+  $app.innerHTML = `<header class="blog-head">
+      <h1>Rehber</h1>
+      <p class="lede">Odak, ödül sistemi, uyku ve alışkanlıklar üzerine kısa, kaynaklı yazılar. Her bölüm tek bir fikir ve bir özet cümlesiyle biter; her iddianın kaynağı ve kanıt durumu yazının içinde.</p>
+      <p class="post-meta">${GUIDE.length} yazı · ${doneN} okundu</p>
+    </header>
+    <div class="gfilter">
+      <input type="search" id="gq" placeholder="Yazılarda ara: uyku, bildirim, erteleme…" aria-label="Rehberde ara" value="${esc(guideUI.q)}">
+      <div class="chips" role="group" aria-label="Kategori">
+        <button type="button" class="chip${guideUI.cat ? "" : " on"}" data-cat="">Tümü</button>
+        ${GUIDE_CATS.map(c => `<button type="button" class="chip${guideUI.cat === c.id ? " on" : ""}" data-cat="${c.id}">${esc(c.title)}</button>`).join("")}
+      </div>
+    </div>
+    <div id="glist"></div>`;
+  const drawList = () => {
+    const q = guideUI.q.trim().toLocaleLowerCase("tr"), cat = guideUI.cat;
+    const list = $app.querySelector("#glist");
+    $app.querySelectorAll("[data-cat]").forEach(b => { b.classList.toggle("on", b.dataset.cat === cat); b.setAttribute("aria-pressed", b.dataset.cat === cat); });
+    if (q) {
+      const hits = GUIDE.filter(m => (!cat || m.cat === cat) && guideHay(m).includes(q));
+      list.innerHTML = hits.length ? `<p class="muted small">${hits.length} yazı bulundu.</p><div class="posts">${hits.map(postRow).join("")}</div>`
+        : `<p class="muted">"${esc(guideUI.q)}" için sonuç yok. Daha kısa bir kelime dene.</p>`;
+      return;
+    }
+    const cats = cat ? GUIDE_CATS.filter(c => c.id === cat) : GUIDE_CATS;
+    list.innerHTML = `${!cat && inProgress.length ? `<section class="gsec"><h2>Kaldığın yer</h2><div class="posts">${inProgress.slice(0, 2).map(postRow).join("")}</div></section>` : ""}
+      ${!cat ? `<section class="gsec path"><h2>Buradan başla</h2><p class="muted small">Yeni başlıyorsan bu dört yazı sitenin temel fikrini sırayla anlatır.</p>
+        <ol class="pathlist">${GUIDE_PATH.map(id => byId(GUIDE, id)).map(m => `<li class="${guideDone(m) ? "done" : ""}"><a href="#/rehber/${m.id}"><b>${esc(m.title)}</b><span>${readMin(m)} dk${guideDone(m) ? " · okundu" : ""}</span></a></li>`).join("")}</ol></section>` : ""}
+      ${cats.map(c => `<section class="gsec"><h2>${esc(c.title)}</h2><p class="muted small">${esc(c.desc)}</p>
+        <div class="posts">${GUIDE.filter(m => m.cat === c.id).map(postRow).join("")}</div></section>`).join("")}`;
+  };
+  const inp = $app.querySelector("#gq");
+  inp.oninput = () => { guideUI.q = inp.value; drawList(); };
+  $app.querySelectorAll("[data-cat]").forEach(b => b.onclick = () => { guideUI.cat = b.dataset.cat; drawList(); });
+  drawList();
+}
 
 // ---------- Yönlendirici ----------
 function route() {
-  const [, page, sub] = location.hash.split("/");
+  const [, page, sub, sub2] = location.hash.split("/");
+  if (guideCleanup) { guideCleanup(); guideCleanup = null; }
   document.querySelectorAll("[data-nav]").forEach(a => a.classList.toggle("on", a.dataset.nav === page));
   if (page !== "acil") resetFlow();
-  if (page !== "rehber") guideState.m = null;
   document.body.classList.toggle("focusing", page === "odak" && !!Store.get().active);
-  ({ acil: viewAcil, blok: viewBlok, odak: viewOdak, hazirlik: viewHazirlik, gecmis: viewGecmis, rehber: () => viewRehber(sub) }[page] || viewHome)();
-  window.scrollTo(0, 0); tick(); syncWakeLock();
+  ({ acil: viewAcil, blok: viewBlok, odak: viewOdak, hazirlik: viewHazirlik, gecmis: viewGecmis, rehber: () => viewRehber(sub, sub2) }[page] || viewHome)();
+  if (!(page === "rehber" && sub2)) window.scrollTo(0, 0);
+  tick(); syncWakeLock();
 }
 // Başka sekmede veri değişirse bu sekmeyi tazele (yazarken değil).
 window.addEventListener("storage", e => {
@@ -939,6 +1027,7 @@ window.addEventListener("storage", e => {
   Store.reload();
   if (!document.activeElement?.closest("input, textarea, select")) route();
 });
+if ("scrollRestoration" in history) history.scrollRestoration = "manual"; // kaydırmayı yönlendirici yönetir
 window.addEventListener("hashchange", route);
 setInterval(tick, 1000);
 route();

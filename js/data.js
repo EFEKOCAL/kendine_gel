@@ -148,6 +148,23 @@ const SOURCES = {
   kessler2005: "Kessler, R. C. ve ark. (2005). The World Health Organization Adult ADHD Self-Report Scale (ASRS): A short screening scale for use in the general population. Psychological Medicine, 35(2), 245–256. https://doi.org/10.1017/S0033291704002892",
   song2021: "Song, P. ve ark. (2021). The prevalence of adult attention-deficit hyperactivity disorder: A global systematic review and meta-analysis. Journal of Global Health, 11, 04009. https://doi.org/10.7189/jogh.11.04009",
   apa2022: "American Psychiatric Association (2022). Diagnostic and Statistical Manual of Mental Disorders, 5. baskı, gözden geçirilmiş metin (DSM-5-TR). https://doi.org/10.1176/appi.books.9780890425787",
+  // Rehber v0.5 (Kasım 2026, Crossref ile doğrulandı)
+  stothart2015: "Stothart, C., Mitchum, A. & Yehnert, C. (2015). The attentional cost of receiving a cell phone notification. Journal of Experimental Psychology: Human Perception and Performance, 41(4), 893–897. https://doi.org/10.1037/xhp0000100",
+  monsell2003: "Monsell, S. (2003). Task switching. Trends in Cognitive Sciences, 7(3), 134–140. https://doi.org/10.1016/S1364-6613(03)00028-7",
+  sana2013: "Sana, F., Weston, T. & Cepeda, N. J. (2013). Laptop multitasking hinders classroom learning for both users and nearby peers. Computers & Education, 62, 24–31. https://doi.org/10.1016/j.compedu.2012.10.003",
+  kushlev2015: "Kushlev, K. & Dunn, E. W. (2015). Checking email less frequently reduces stress. Computers in Human Behavior, 43, 220–228. https://doi.org/10.1016/j.chb.2014.11.005",
+  killingsworth2010: "Killingsworth, M. A. & Gilbert, D. T. (2010). A wandering mind is an unhappy mind. Science, 330(6006), 932. https://doi.org/10.1126/science.1192439",
+  wilson2014: "Wilson, T. D. ve ark. (2014). Just think: The challenges of the disengaged mind. Science, 345(6192), 75–77. https://doi.org/10.1126/science.1250830",
+  westgate2018: "Westgate, E. C. & Wilson, T. D. (2018). Boring thoughts and bored minds: The MAC model of boredom and cognitive engagement. Psychological Review, 125(5), 689–713. https://doi.org/10.1037/rev0000097",
+  hofmann2012: "Hofmann, W., Baumeister, R. F., Förster, G. & Vohs, K. D. (2012). Everyday temptations: An experience sampling study of desire, conflict, and self-control. Journal of Personality and Social Psychology, 102(6), 1318–1335. https://doi.org/10.1037/a0026545",
+  lieberman2007: "Lieberman, M. D. ve ark. (2007). Putting feelings into words: Affect labeling disrupts amygdala activity in response to affective stimuli. Psychological Science, 18(5), 421–428. https://doi.org/10.1111/j.1467-9280.2007.01916.x",
+  dunlosky2013: "Dunlosky, J., Rawson, K. A., Marsh, E. J., Nathan, M. J. & Willingham, D. T. (2013). Improving students' learning with effective learning techniques. Psychological Science in the Public Interest, 14(1), 4–58. https://doi.org/10.1177/1529100612453266",
+  roediger2006: "Roediger, H. L. & Karpicke, J. D. (2006). Test-enhanced learning: Taking memory tests improves long-term retention. Psychological Science, 17(3), 249–255. https://doi.org/10.1111/j.1467-9280.2006.01693.x",
+  cepeda2006: "Cepeda, N. J., Pashler, H., Vul, E., Wixted, J. T. & Rohrer, D. (2006). Distributed practice in verbal recall tasks: A review and quantitative synthesis. Psychological Bulletin, 132(3), 354–380. https://doi.org/10.1037/0033-2909.132.3.354",
+  rasch2013: "Rasch, B. & Born, J. (2013). About sleep's role in memory. Physiological Reviews, 93(2), 681–766. https://doi.org/10.1152/physrev.00032.2012",
+  juliano2004: "Juliano, L. M. & Griffiths, R. R. (2004). A critical review of caffeine withdrawal: Empirical validation of symptoms and signs, incidence, severity, and associated features. Psychopharmacology, 176(1), 1–29. https://doi.org/10.1007/s00213-004-2000-x",
+  james2005: "James, J. E. & Rogers, P. J. (2005). Effects of caffeine on performance and mood: Withdrawal reversal is the most plausible explanation. Psychopharmacology, 182(1), 1–8. https://doi.org/10.1007/s00213-005-0084-6",
+  ilieva2015: "Ilieva, I. P., Hook, C. J. & Farah, M. J. (2015). Prescription stimulants' effects on healthy inhibitory control, working memory, and episodic memory: A meta-analysis. Journal of Cognitive Neuroscience, 27(6), 1069–1089. https://doi.org/10.1162/jocn_a_00776",
 };
 
 const INTERVENTIONS = [
