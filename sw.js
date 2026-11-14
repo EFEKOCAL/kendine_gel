@@ -1,10 +1,10 @@
 // Çevrimdışı destek. Ağ öncelikli: güncel sürüm varsa onu al (3 sn içinde), yoksa önbellekten sun.
 // CACHE adını her yayında değiştirmek gerekmez; eski önbellek activate'te temizlenir.
-const CACHE = "kendinegel-v2";
+const CACHE = "kendinegel-v3";
 const FILES = ["./", "./index.html", "./css/style.css", "./js/data.js", "./js/guide.js", "./js/store.js", "./js/filesync.js","./js/app.js", "./icon.svg", "./manifest.webmanifest"];
 
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES.map(f => new Request(f, { cache: "reload" })))).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
@@ -12,7 +12,8 @@ self.addEventListener("activate", e => {
 const timeout = (ms) => new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms));
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET" || new URL(e.request.url).origin !== location.origin) return;
-  const net = fetch(e.request).then(r => {
+  // cache: "no-cache" → tarayıcının HTTP önbelleği (GitHub Pages max-age=600) atlanır, sunucuya her seferinde sorulur.
+  const net = fetch(e.request, { cache: "no-cache" }).then(r => {
     if (r.ok) { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); }
     return r;
   });
