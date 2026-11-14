@@ -22,9 +22,11 @@ const Store = (() => {
     catch { mem = empty(); }
     return mem;
   }
+  const saveListeners = [];
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(mem)); saveFailed = false; }
     catch { saveFailed = true; }
+    saveListeners.forEach(f => { try { f(); } catch {} });
   }
 
   const validEntry = e => e && typeof e.id === "string" && Number.isFinite(e.ts)
@@ -47,5 +49,7 @@ const Store = (() => {
       return { data: migrate({ ...d, entries: good, active: null, break: null }), dropped: d.entries.length - good.length };
     },
     replace(data) { mem = data; save(); },
+    // Her yazmadan sonra çağrılır (ör. dosyaya otomatik kayıt).
+    onSave: f => saveListeners.push(f),
   };
 })();

@@ -26,7 +26,7 @@ const LEVELS = [
     signs: ["Uyuşukluk, esneme", "Okuduğunu anlamıyorsun", "Masada çökmüş oturuş"],
     goal: "Uyarılmışlık düşük: yükseltmek. 5–10 dk. Her gün böyleyse önce uykuna bak." },
   { id: 3, name: "Uzun kaçış sonrası",
-    signs: ["Uzun süre oyun / kısa video / porno tükettin", "\"Gün zaten bitti\" düşüncesi", "Başlamak imkânsız görünüyor"],
+    signs: ["Uzun süre yüksek dopaminli içerik tükettin", "\"Gün zaten bitti\" düşüncesi", "Başlamak imkânsız görünüyor"],
     goal: "Kaymanın güne yayılmasını önlemek: ortamı değiştir, 10 dk'lık bir blokla dön. 10–20 dk." },
   { id: 4, name: "Yüksek gerginlik ya da donma",
     signs: ["Yoğun kaygı, çarpıntı, yerinde duramama", "Ya da tamamen donmuş, hiçbir şey yapamıyor hissi", "Önceki müdahaleler bugün işe yaramadı"],
@@ -91,11 +91,6 @@ const SOURCES = {
   volkow2009: "Volkow, N. D., Fowler, J. S., Wang, G.-J., Baler, R. & Telang, F. (2009). Imaging dopamine's role in drug abuse and addiction. Neuropharmacology, 56(Suppl. 1), 3–8. https://doi.org/10.1016/j.neuropharm.2008.05.022",
   walla2024: "Walla, P. & Zheng, Y. (2024). Intense short-video-based social media use reduces the P300 event-related potential component in a visual oddball experiment: A sign for reduced attention. Life, 14(3), 290. https://doi.org/10.3390/life14030290",
   nguyen2025: "Nguyen, L. ve ark. (2025). Feeds, feelings, and focus: A systematic review and meta-analysis examining the cognitive and mental health correlates of short-form video use. Psychological Bulletin, 151(9), 1125–1146. https://doi.org/10.1037/bul0000498",
-  kuhn2014: "Kühn, S. & Gallinat, J. (2014). Brain structure and functional connectivity associated with pornography consumption: The brain on porn. JAMA Psychiatry, 71(7), 827–834. https://doi.org/10.1001/jamapsychiatry.2014.93",
-  voon2014: "Voon, V. ve ark. (2014). Neural correlates of sexual cue reactivity in individuals with and without compulsive sexual behaviours. PLoS ONE, 9(7), e102419. https://doi.org/10.1371/journal.pone.0102419",
-  laier2013: "Laier, C., Schulte, F. P. & Brand, M. (2013). Pornographic picture processing interferes with working memory performance. Journal of Sex Research, 50(7), 642–652. https://doi.org/10.1080/00224499.2012.716873",
-  kraus2018: "Kraus, S. W. ve ark. (2018). Compulsive sexual behaviour disorder in the ICD-11. World Psychiatry, 17(1), 109–110. https://doi.org/10.1002/wps.20499",
-  grubbs2019: "Grubbs, J. B., Perry, S. L., Wilt, J. A. & Reid, R. C. (2019). Pornography problems due to moral incongruence: An integrative model with a systematic review and meta-analysis. Archives of Sexual Behavior, 48(2), 397–415. https://doi.org/10.1007/s10508-018-1248-x",
   difeliceantonio2018: "DiFeliceantonio, A. G. ve ark. (2018). Supra-additive effects of combining fat and carbohydrate on food reward. Cell Metabolism, 28(1), 33–44.e3. https://doi.org/10.1016/j.cmet.2018.05.018",
   hall2019: "Hall, K. D. ve ark. (2019). Ultra-processed diets cause excess calorie intake and weight gain: An inpatient randomized controlled trial of ad libitum food intake. Cell Metabolism, 30(1), 67–77.e3. https://doi.org/10.1016/j.cmet.2019.05.008",
   kaelberer2018: "Kaelberer, M. M. ve ark. (2018). A gut-brain neural circuit for nutrient sensory transduction. Science, 361(6408), eaat5236. https://doi.org/10.1126/science.aat5236",
@@ -277,7 +272,7 @@ const PREP = [
   { id: "uyku", text: "Dün gece yeterli uyudun (yoksa bloklarını kısa tut: 10–15 dk)", why: "Uykusuzluk en çok sürekli dikkati düşürür.", src: ["lim2010"] },
 ];
 
-const LEVEL4_NOTE = "Bu durum iki haftadan uzun süredir çoğu gün tekrarlıyorsa; uykun, iştahın veya enerjin belirgin değiştiyse, eskiden keyif aldığın şeylerden artık keyif alamıyorsan ya da oyun, kısa video, porno veya yeme üzerinde kontrolü kaybettiğini görüyorsan bu bir verimlilik sorunu olmayabilir. Üniversitenin psikolojik danışmanlık birimi, aile hekimi veya psikiyatri polikliniği iyi bir başlangıçtır; teknoloji ve davranışsal bağımlılık için Yeşilay Danışmanlık Merkezi (YEDAM) 115 hattı ücretsiz destek verir. İlk kez yaşadığın göğüs ağrısı, nefes darlığı ya da kendine zarar verme düşüncen varsa 112'yi ara veya en yakın acil servise git.";
+const LEVEL4_NOTE = "Bu durum iki haftadan uzun süredir çoğu gün tekrarlıyorsa; uykun, iştahın veya enerjin belirgin değiştiyse, eskiden keyif aldığın şeylerden artık keyif alamıyorsan ya da yüksek dopaminli bir alışkanlık üzerinde kontrolü kaybettiğini görüyorsan bu bir verimlilik sorunu olmayabilir. Üniversitenin psikolojik danışmanlık birimi, aile hekimi veya psikiyatri polikliniği iyi bir başlangıçtır; teknoloji ve davranışsal bağımlılık için Yeşilay Danışmanlık Merkezi (YEDAM) 115 hattı ücretsiz destek verir. İlk kez yaşadığın göğüs ağrısı, nefes darlığı ya da kendine zarar verme düşüncen varsa 112'yi ara veya en yakın acil servise git.";
 
 const LAPSE_NOTE = "Kaybedilen süreyi telafi etmeye çalışma. Sıradaki blok 10 dk; amaç günün kaybedilmediğini görmek. Kayma bir veri, karakter kanıtı değil.";
 

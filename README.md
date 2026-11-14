@@ -4,7 +4,7 @@
 
 Odak kaydığında, bulunduğun duruma (Seviye 1–4) ve ortama (ev, yurt, okul, kütüphane) göre kaynaklı bir müdahale önerir. Seçtiğin müdahaleden sonra küçük bir başlangıç göreviyle bir odak bloğu başlatırsın. Blok sonunda bloğun ne kadarının gerçekten odaklı geçtiğini işaretlersin; net süre buna göre hesaplanır. Blok sırasında dikkatin dağıldığında tek dokunuşla neyin çektiğini kaydedebilirsin.
 
-Geçmiş sekmesi günlük ve haftalık net süreyi, en verimli saatlerini, odağın kaydığı saatleri, dağılma nedenlerini ve hangi müdahalenin sende işe yaradığını gösterir. Rehber bölümü dikkat, ödül sistemi, evrimsel uyumsuzluk, kısa video, porno, oyun, gıda, uyku ve başlama üzerine kısa kartlardan oluşur; her iddia kanıt seviyesi ve DOI'li kaynakla verilir. Hazırlık listesi, oturmadan önce dikkat dağıtıcıları kaldırmak içindir.
+Geçmiş sekmesi günlük ve haftalık net süreyi, en verimli saatlerini, odağın kaydığı saatleri, dağılma nedenlerini ve hangi müdahalenin sende işe yaradığını gösterir. Rehber bölümü dikkat, ödül sistemi, evrimsel uyumsuzluk, yüksek dopaminli alışkanlıklar, uyku ve başlama üzerine kısa kartlardan oluşur; her iddia kanıt seviyesi ve DOI'li kaynakla verilir. Hazırlık listesi, oturmadan önce dikkat dağıtıcıları kaldırmak içindir.
 
 Bu site tıbbi veya psikolojik tavsiye yerine geçmez. Rehber'deki "Alışkanlık mı, belirti mi?" bölümü, odak sorununun bir sağlık durumunun belirtisi olabileceği durumları ve başvuru yerlerini anlatır.
 

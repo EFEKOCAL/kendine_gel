@@ -261,7 +261,7 @@ function viewHome() {
   const prepDone = s.prep?.date === todayKey() ? s.prep.done.length : 0;
   const ch = crisisHours(), h = new Date().getHours();
   const riskNow = ch.some(x => x === h || x === (h + 1) % 24) && prepDone < PREP.length / 2;
-  const needBackup = s.entries.length >= 10 && (!s.prefs.lastExport || Date.now() - s.prefs.lastExport > 14 * DAY);
+  const needBackup = s.entries.length >= 10 && FileSync.info().state !== "connected" &&(!s.prefs.lastExport || Date.now() - s.prefs.lastExport > 14 * DAY);
   const showIntro = !s.prefs.introSeen && !s.entries.length;
   $app.innerHTML = `
     ${showIntro ? introCard() : ""}
@@ -275,12 +275,13 @@ function viewHome() {
       ${goalBar(todayEntries(), goalMin())}
     </section>
     ${workCard()}
+    <div id="fsHome">${fsHomeNote()}</div>
     ${planCard()}
     ${weeklyCard()}
     ${needBackup ? `<p class="note">Veriler yalnızca bu tarayıcıda. Son yedek: ${s.prefs.lastExport ? `${Math.floor((Date.now() - s.prefs.lastExport) / DAY)} gün önce` : "hiç alınmadı"}. <button class="link inline" id="quickExport">Şimdi dışa aktar</button></p>` : ""}
     <div class="grid2">
       <a class="tile" href="#/hazirlik"><h3>Hazırlık <span class="muted small">${prepDone}/${PREP.length}</span></h3><p>Oturmadan önce 2 dakikalık kontrol listesi. Odak kaymadan önce sürtünmeyi ayarla.</p></a>
-      <a class="tile" href="#/rehber"><h3>Rehber</h3><p>Kısa kartlarla: neden kaçıyoruz, ödül sistemi, kısa video, porno, oyun, gıda, uyku, başlama.</p></a>
+      <a class="tile" href="#/rehber"><h3>Rehber</h3><p>Kısa kartlarla: neden kaçıyoruz, ödül sistemi, yüksek dopaminli alışkanlıklar, uyku, başlama.</p></a>
       <a class="tile" href="#/gecmis"><h3>Geçmiş ${pending ? `<span class="pill">${pending} geri bildirim bekliyor</span>` : ""}</h3><p>Net süre, haftalar, kayma saatlerin, dağılma nedenlerin ve sende işe yarayan müdahaleler.</p></a>
     </div>`;
   bindIntro(); bindPlan(); bindWeekly();
@@ -775,12 +776,14 @@ function viewGecmis() {
             <div class="row tight"><button class="btn">Kaydet</button><button class="btn danger" type="button" data-del="${e.id}">Kaydı sil</button></div>
           </form></details>
       </article>`).join("")}</div>
+    <h3>Bilgisayarına kayıt</h3>
+    <section class="card" id="fileSync">${fileSyncHTML()}</section>
     <div class="row io">
       <button class="btn" id="exp">Veriyi dışa aktar (JSON)</button>
       <button class="btn" id="impBtn">İçe aktar</button><input type="file" id="imp" accept="application/json,.json" hidden>
       <button class="btn danger" id="wipe">Tüm veriyi sil</button>
     </div>
-    <p class="muted small">Veriler yalnızca bu tarayıcıda saklanır; hiçbir sunucuya gönderilmez. Cihaz değiştirirken dışa aktar / içe aktar kullan. Yedek dosyası kayma kayıtlarını, notlarını ve tetikleyicileri düz metin olarak içerir: paylaşılan bir bilgisayarda indirme klasöründe bırakma. Bu cihazı başkası da kullanıyorsa işin bitince tarayıcının gizli penceresini tercih et ya da veriyi sil.</p>`;
+    <p class="muted small">Veriler yalnızca bu tarayıcıda ve (bağladıysan) seçtiğin dosyada saklanır; hiçbir sunucuya gönderilmez. Cihaz değiştirirken dışa aktar / içe aktar kullan. Yedek dosyası kayma kayıtlarını, notlarını ve tetikleyicileri düz metin olarak içerir: paylaşılan bir bilgisayarda indirme klasöründe bırakma. Bu cihazı başkası da kullanıyorsa işin bitince tarayıcının gizli penceresini tercih et ya da veriyi sil.</p>`;
 
   // Kalıcı depolama: tarayıcı yer açmak için bu sitenin verisini kendiliğinden silmez (kullanıcı silebilir).
   (async () => {
@@ -832,6 +835,45 @@ function viewGecmis() {
     } catch (err) { alert("İçe aktarılamadı: " + err.message); }
   };
 }
+// ---------- Dosyaya otomatik kayıt (FileSync) ----------
+function fileSyncHTML() {
+  const i = FileSync.info();
+  const pick = `<div class="row tight"><button class="btn small primary" data-fs-act="createNew">Yeni kayıt dosyası oluştur</button><button class="btn small" data-fs-act="openExisting">Var olan dosyayı aç</button></div>`;
+  const time = i.lastWrite ? new Date(i.lastWrite).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "";
+  switch (i.state) {
+    case "unsupported":
+      return `<p class="muted small">Bu tarayıcı bilgisayardaki bir dosyaya doğrudan yazamıyor (Chrome veya Edge masaüstü gerekir). Aşağıdaki dışa / içe aktarmayı kullan.</p>`;
+    case "connected":
+      return `<p><b>Dosyaya kaydediliyor:</b> ${esc(i.name)}${time ? ` <span class="muted small">· son kayıt ${time}</span>` : ""}</p>
+        <p class="muted small">Her değişiklik birkaç saniye içinde dosyaya yazılır. Gizli sekmede ya da başka tarayıcıda "Var olan dosyayı aç" ile aynı dosyayı seçersen aynı kayıtlarla devam edersin. Aynı dosyayı iki tarayıcıda aynı anda açık tutma.</p>
+        <div class="row tight"><button class="btn small" data-fs-act="disconnect">Bağlantıyı kes</button></div>`;
+    case "need-permission":
+      return `<p><b>${esc(i.name)}</b> dosyasına yazmak için tarayıcı izni gerekiyor. Chrome'da "Her ziyarette izin ver" seçersen bir daha sorulmaz.</p>
+        <div class="row tight"><button class="btn small primary" data-fs-act="grant">İzin ver</button><button class="btn small" data-fs-act="disconnect">Bağlantıyı kes</button></div>`;
+    case "error":
+      return `<p class="note warn">${esc(i.err)}</p>${pick}`;
+    default:
+      return `<p>Kayıtlar her değişiklikte bilgisayarındaki bir JSON dosyasına yazılsın. Çerez ya da tarayıcı verisi silinse de dosya kalır; gizli sekmede veya başka tarayıcıda aynı dosyayı açarak devam edersin.</p>
+        <p class="muted small">Dosyayı OneDrive / Google Drive klasörüne koyarsan diğer bilgisayarlarında da açılır. Dosya kayma kayıtlarını ve notlarını düz metin olarak içerir; herkese açık bir klasöre ya da GitHub'a gönderilen bir klasöre koyma.</p>
+        ${pick}`;
+  }
+}
+function fsHomeNote() {
+  const i = FileSync.info();
+  return i.state === "need-permission" ? `<p class="note">Kayıtların <b>${esc(i.name)}</b> dosyasına yazılmıyor: tarayıcı izni gerekiyor. <button class="link inline" data-fs-act="grant">İzin ver</button></p>`
+    : i.state === "error" ? `<p class="note">Kayıt dosyasına yazılamadı. <a href="#/gecmis">Geçmiş → Bilgisayarına kayıt</a></p>` : "";
+}
+document.addEventListener("click", ev => {
+  const b = ev.target.closest("[data-fs-act]");
+  if (b && FileSync[b.dataset.fsAct]) FileSync[b.dataset.fsAct]();
+});
+FileSync.onChange(() => {
+  const c = document.getElementById("fileSync"); if (c) c.innerHTML = fileSyncHTML();
+  const h = document.getElementById("fsHome"); if (h) h.innerHTML = fsHomeNote();
+});
+// Dosyadan gelen veri yerel veriyi değiştirdiyse ekranı tazele (yazarken değil).
+window.addEventListener("kendinegel:data", () => { if (!document.activeElement?.closest("input, textarea, select")) route(); });
+
 function exportData() {
   Store.update(d => d.prefs.lastExport = Date.now());
   const a = document.createElement("a"), url = URL.createObjectURL(new Blob([Store.exportJSON()], { type: "application/json" }));
@@ -900,3 +942,4 @@ window.addEventListener("storage", e => {
 window.addEventListener("hashchange", route);
 setInterval(tick, 1000);
 route();
+FileSync.init();

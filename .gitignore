@@ -1,0 +1,4 @@
+# Kişisel kayıt dosyaları (FileSync / dışa aktarma) yanlışlıkla yayına girmesin.
+kendinegel-veri*.json
+kendinegel-yedek-*.json
+veri/
