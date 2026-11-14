@@ -20,7 +20,7 @@ Günlük, haftalık ve aylık **net çalışma süresini** (gerçekten odaklı g
 - GitHub Pages: statik, build adımı yok, framework yok. Veri localStorage'da (`kendinegel.v1`), JSON dışa/içe aktarma var.
 
 ## Yapı
-- `index.html`: iskelet. `css/style.css`: tokenlar `:root` altında, koyu mod desteği var.
+- `index.html`: iskelet. `css/style.css`: tokenlar `:root` altında, koyu mod desteği var. Görsel dil (v0.6) bir dergi/blog havasında: sıcak kâğıt zemin, koyu yeşil vurgu (`--accent`), başlık ve okuma metninde serif `--serif` (Newsreader), etiketlerde büyük harf `--mono` (IBM Plex Mono), arayüz öğelerinde sistem sans. Fontlar `fonts/` altında, SIL OFL lisanslı, yalnız latin + latin-ext; dış font isteği yok.
 - `js/data.js`: EVIDENCE, ENVS, LEVELS (1–4), SOURCES (DOI'li), INTERVENTIONS (`pin: true` = kişisel veri yokken üstte), TRIGGERS (kayma öncesi his), PREP, LEVEL4_NOTE, LAPSE_NOTE, HELP_NOTE.
 - `js/guide.js`: GUIDE_CATS (6 kategori), GUIDE_PATH ("Buradan başla" sırası) ve GUIDE yazıları (`cat`, `lede`, `sure`, `try`, `cards`). İlerleme `Store.guide[id]` = ekranda görülen en ileri bölüm indeksi.
 - `js/store.js`: localStorage sarmalayıcısı. Şema sürümü `v` + `migrate()`; yeni alan eklenince migrate'e varsayılan ekle. `update()` her yazmada yeniden okur (çoklu sekme). İçe aktarma doğrular, onay ister, `active`/`break` almaz. `onSave(fn)` her yazmadan sonra çağrılır.

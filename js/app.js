@@ -899,8 +899,9 @@ const doiLink = id => {
   return `${esc(s.slice(0, i))}<a href="${esc(url)}" target="_blank" rel="noopener">${esc(url.replace("https://", ""))}</a>`;
 };
 const postRow = m => `<a class="post" href="#/rehber/${m.id}">
-    <span class="post-meta">${esc(catOf(m).title)} · ${readMin(m)} dk okuma · ${m.cards.length} bölüm ${guideStatus(m)}</span>
-    <h3>${esc(m.title)}</h3><p>${esc(m.lede)}</p></a>`;
+    <span class="kicker">${esc(catOf(m).title)}</span>
+    <h3>${esc(m.title)}</h3><p>${esc(m.lede)}</p>
+    <span class="post-meta">${readMin(m)} dk okuma · ${m.cards.length} bölüm ${guideStatus(m)}</span></a>`;
 const guideHay = m => [m.title, m.lede, ...m.cards.flatMap(c => [c.h, c.body, c.key || ""])].join(" ").toLocaleLowerCase("tr");
 
 function viewRehber(modId, secIdx) {

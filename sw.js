@@ -1,7 +1,8 @@
 // Çevrimdışı destek. Ağ öncelikli: güncel sürüm varsa onu al (3 sn içinde), yoksa önbellekten sun.
 // CACHE adını her yayında değiştirmek gerekmez; eski önbellek activate'te temizlenir.
-const CACHE = "kendinegel-v4";
-const FILES = ["./", "./index.html", "./css/style.css", "./js/data.js", "./js/guide.js", "./js/store.js", "./js/filesync.js","./js/app.js", "./icon.svg", "./manifest.webmanifest"];
+const CACHE = "kendinegel-v5";
+const FILES = ["./", "./index.html", "./css/style.css", "./js/data.js", "./js/guide.js", "./js/store.js", "./js/filesync.js","./js/app.js", "./icon.svg", "./manifest.webmanifest",
+  "./fonts/newsreader-latin.woff2", "./fonts/newsreader-latin-ext.woff2", "./fonts/plexmono-500-latin.woff2", "./fonts/plexmono-500-latin-ext.woff2"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES.map(f => new Request(f, { cache: "reload" })))).then(() => self.skipWaiting()));

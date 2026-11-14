@@ -1,25 +1,37 @@
+/* Fontlar depoda (fonts/, SIL OFL); yalnız latin + latin-ext (Türkçe) alt kümeleri. */
+@font-face { font-family: "Newsreader"; font-style: normal; font-weight: 300 700; font-display: swap; src: url(../fonts/newsreader-latin-ext.woff2) format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Newsreader"; font-style: normal; font-weight: 300 700; font-display: swap; src: url(../fonts/newsreader-latin.woff2) format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url(../fonts/plexmono-500-latin-ext.woff2) format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url(../fonts/plexmono-500-latin.woff2) format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
 /* Tokenlar. Metin renkleri WCAG AA (4.5:1) için seçildi; --field kenarlığı 3:1. */
 :root {
   color-scheme: light dark;
-  --bg: #f6f6f4; --surface: #ffffff; --text: #1c1d1f; --muted: #5f636a; --line: #e2e2de; --field: #8a8f98;
-  --accent: #2f5bea; --accent-ink: #ffffff;
+  --bg: #f4f1ea; --surface: #fbf9f4; --text: #2b2626; --muted: #665d57; --line: #e0d9cc; --field: #8c8378;
+  --accent: #005645; --accent-ink: #ffffff; --accent-soft: #e3ece6;
   --l1: #3f8f5a; --l2: #9a7400; --l3: #b8531c; --l4: #b83232;
   --strong: #2e7d4f; --mid: #7d5f00; --weak: #5f636a; --warn-text: #b83232;
   --alert: #b8531c; --alert-ink: #ffffff;
   --radius: 12px;
+  --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #121315; --surface: #1b1d20; --text: #e8e8e6; --muted: #a3a9b1; --line: #2c2f34; --field: #70767f;
-    --accent: #6d8cff; --accent-ink: #0d0f14;
+    --bg: #181614; --surface: #221f1c; --text: #ece6dc; --muted: #aea497; --line: #36312b; --field: #7a7167;
+    --accent: #7ccab2; --accent-ink: #0f1f1a; --accent-soft: #1f2d28;
     --l1: #5cc488; --l2: #e0b84a; --l3: #f08a4b; --l4: #ff7b72;
     --strong: #5cc488; --mid: #e0b84a; --weak: #a3a9b1; --warn-text: #ff7b72;
     --alert: #f08a4b; --alert-ink: #121315;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #121315; --surface: #1b1d20; --text: #e8e8e6; --muted: #a3a9b1; --line: #2c2f34; --field: #70767f;
-  --accent: #6d8cff; --accent-ink: #0d0f14;
+  --bg: #181614; --surface: #221f1c; --text: #ece6dc; --muted: #aea497; --line: #36312b; --field: #7a7167;
+  --accent: #7ccab2; --accent-ink: #0f1f1a; --accent-soft: #1f2d28;
   --l1: #5cc488; --l2: #e0b84a; --l3: #f08a4b; --l4: #ff7b72;
   --strong: #5cc488; --mid: #e0b84a; --weak: #a3a9b1; --warn-text: #ff7b72;
   --alert: #f08a4b; --alert-ink: #121315;
@@ -315,3 +327,59 @@ label.check { display: inline-flex; align-items: center; gap: 6px; font-weight: 
   .psec > p { font-size: 1rem; }
 }
 @media (prefers-reduced-motion: reduce) { .refs li.flash { animation: none; } html { scroll-behavior: auto; } }
+
+/* ---------- Tipografi (v0.6): serif başlık ve okuma metni, monospace etiketler ---------- */
+h1, h2, h3, .brand { font-family: var(--serif); font-weight: 500; letter-spacing: -.012em; font-optical-sizing: auto; }
+h1 { font-weight: 400; }
+h2 { font-size: 1.55rem; } h3 { font-size: 1.2rem; }
+.brand { font-size: 1.3rem; color: var(--accent); }
+.hero h1 { font-size: clamp(2rem, 6vw, 2.8rem); }
+.tile h3, .level strong, .intv h3 { font-family: var(--serif); }
+.lvnum, .post-meta, .crumbs, .gstat, .secnum, .tag, .kicker {
+  font-family: var(--mono); font-weight: 500; font-size: .74rem; letter-spacing: .04em; text-transform: uppercase; }
+.lvnum, .post-meta, .crumbs { color: var(--muted); }
+.kicker { display: block; color: var(--accent); }
+.key { font-family: var(--serif); font-size: 1.12rem; font-weight: 600; background: var(--accent-soft); border-left-color: var(--accent); padding: 10px 14px; line-height: 1.45; }
+.note { background: var(--surface); }
+.btn { border-radius: 99px; }
+.btn.primary:hover { filter: brightness(1.12); }
+.chip.on { background: var(--accent); }
+
+/* Rehber listesi */
+.blog-head { text-align: center; padding: 28px 0 8px; }
+.blog-head h1 { font-size: clamp(2.4rem, 8vw, 3.6rem); margin-bottom: .25em; }
+.blog-head .lede { margin: 0 auto 10px; font-family: var(--serif); font-size: 1.2rem; }
+.gfilter { max-width: 620px; margin: 18px auto 6px; }
+.chips { justify-content: flex-start; }
+.gsec > h2 { font-size: 1.6rem; font-weight: 400; margin-bottom: 4px; }
+.posts { border-top: 1px solid var(--text); }
+.post { padding: 18px 2px; }
+.post h3 { font-size: 1.45rem; font-weight: 500; margin: 6px 0; line-height: 1.2; }
+.post p { font-family: var(--serif); font-size: 1.05rem; line-height: 1.5; }
+.post .post-meta { margin-top: 8px; }
+.pathlist a { padding: 14px 16px; background: var(--surface); }
+.pathlist a::before { font-family: var(--mono); }
+.pathlist b { font-family: var(--serif); font-weight: 500; font-size: 1.12rem; line-height: 1.25; }
+
+/* Yazı */
+.post-full { max-width: 66ch; }
+.post-head { text-align: center; padding: 18px 0 22px; border-bottom: 1px solid var(--text); }
+.post-head h1 { font-size: clamp(2.1rem, 7vw, 3.2rem); line-height: 1.08; margin-bottom: .35em; }
+.post-head .lede { font-family: var(--serif); font-size: 1.28rem; line-height: 1.5; margin: 0 auto 14px; }
+.crumbs { text-align: center; }
+.psec h2 { font-size: 1.6rem; font-weight: 500; line-height: 1.2; margin-top: .4em; }
+.psec > p, .psec details p { font-family: var(--serif); font-size: 1.2rem; line-height: 1.65; }
+.more p { font-size: 1.08rem !important; }
+.toc { background: transparent; border: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); border-radius: 0; padding: 12px 0; }
+.toc summary { font-family: var(--mono); font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; }
+.toc ol { font-family: var(--serif); font-size: 1.08rem; }
+.sure, .try { background: var(--surface); }
+.sure h2, .try h2, .refs h2, .related h2 { font-family: var(--mono); font-size: .8rem; font-weight: 500; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); }
+.sure p, .try li { font-family: var(--serif); font-size: 1.1rem; line-height: 1.5; }
+.post-nav-a { font-family: var(--serif); font-weight: 500; font-size: 1.1rem; }
+.post-nav-a span { font-family: var(--mono); text-transform: uppercase; letter-spacing: .04em; font-size: .72rem; }
+@media (max-width: 520px) {
+  .psec > p, .psec details p { font-size: 1.1rem; }
+  .post-head .lede { font-size: 1.15rem; }
+  .post h3 { font-size: 1.3rem; }
+}
