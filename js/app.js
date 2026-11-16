@@ -58,7 +58,22 @@ function crisisHours() {
 
 // ---------- Ses, bildirim, ekran kilidi ----------
 let audio = null;
-function unlockAudio() { try { audio ||= new AudioContext(); audio.resume(); } catch {} }
+// Tarayıcı, sayfada bir dokunuş/tuş olmadan sesi açmaz. Sayfa yenilendiyse (ya da Chrome arka
+// plandaki sekmeyi boşaltıp yeniden yüklediyse) ses bağlamı askıda kalır ve alarm sessiz çalar.
+// Bu yüzden her dokunuşta ses açılır; odak ekranında ses kapalıysa uyarı gösterilir.
+function unlockAudio() { try { audio ||= new AudioContext(); audio.onstatechange = syncSoundNote; audio.resume().then(syncSoundNote, () => {}); } catch {} }
+const audioOk = () => audio?.state === "running";
+function syncSoundNote() { const n = document.getElementById("soundNote"); if (n) n.hidden = audioOk(); }
+document.addEventListener("pointerdown", () => audioOk() || unlockAudio(), true);
+document.addEventListener("keydown", () => audioOk() || unlockAudio(), true);
+function testBeep() {
+  unlockAudio();
+  try {
+    const o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime;
+    o.frequency.value = 660; g.gain.setValueAtTime(0.3, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    o.connect(g).connect(audio.destination); o.start(t); o.stop(t + 0.3);
+  } catch {}
+}
 // Alarm: kullanıcı susturana kadar çalar. Desen ses tamponuna yazılıp döngüye alınır;
 // böylece arka plan sekmesinde zamanlayıcılar yavaşlasa da ses aralıksız sürer.
 // Susturma: alt şerit, sayfada herhangi bir dokunuş/tuş, bildirime dokunma veya bildirimi kapatma.
@@ -581,10 +596,12 @@ function viewOdak() {
       <div class="bar"><div id="prog"></div></div>
       <div id="distrBox" class="distr"><button class="btn" id="distr">Dikkatim dağıldı</button></div>
       <div id="pauseBox" class="row"><button class="btn" id="pause">Duraklat</button><button class="btn" id="stopEarly">Bitir</button></div>
+      <p class="note" id="soundNote" ${audioOk() ? "hidden" : ""}>Bitiş sesi kapalı: tarayıcı, sayfa yenilendikten sonra sesi ancak bir dokunuşla açar. <button class="btn" id="soundOn">Sesi aç ve dene</button></p>
       <label class="check small muted"><input type="checkbox" id="wl" ${s.prefs.wakeLock ? "checked" : ""}> Ekranı açık tut</label>
       <p class="muted small">Telefon kilitlenirse bitiş sesi gecikebilir; süre yine doğru sayılır.</p>
       <a class="link" href="#/">Ana sayfa</a>
     </section>`;
+  document.getElementById("soundOn").onclick = testBeep;
   document.getElementById("distr").onclick = () => {
     const t = Date.now();
     Store.update(d => d.entries.find(x => x.id === a.id).distr.push({ t, k: null }));
