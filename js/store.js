@@ -12,7 +12,8 @@ const Store = (() => {
     out.prefs = { ...emptyPrefs(), ...(d.prefs || {}) };
     out.guide = d.guide || {};
     // v1 → v2: focusShare (bloğun odaklı kısmı) ve distr (dağılma kaydı) alanları.
-    out.entries = (d.entries || []).map(e => ({ focusShare: null, distr: [], trigger: null, ...e }));
+    // pauses: blok içi duraklatmalar [{t, min, note, dur(ms), over}].
+    out.entries = (d.entries || []).map(e => ({ focusShare: null, distr: [], trigger: null, pauses: [], ...e }));
     out.v = VERSION;
     return out;
   }

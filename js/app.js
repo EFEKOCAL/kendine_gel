@@ -126,7 +126,7 @@ function workTotals() {
   const done = doneEntries(), a = Store.get().active;
   const t = { today: timerMinutes(todayEntries()), w: timerMinutes(within(done, 7)), m: timerMinutes(within(done, 30)), all: timerMinutes(done) };
   if (a) {
-    const live = Math.floor((Math.min(Date.now(), a.end) - a.start) / 60e3);
+    const live = Math.floor(workedMs(a) / 60e3);
     for (const k in t) if (k !== "today" || dayKey(a.start) === todayKey()) t[k] += live;
   }
   return t;
@@ -138,7 +138,7 @@ function workCard() {
   return `<section class="card work">
     <p class="muted small">Çalışma süren${live ? " · blok sürüyor, süre canlı ekleniyor" : ""}</p>
     <div class="stats four">${cell("today", "bugün")}${cell("w", "son 7 gün")}${cell("m", "son 30 gün")}${cell("all", "toplam")}</div>
-    <p class="muted small">Başlattığın blokların açık kaldığı süre. Durdurursan o ana kadarki süre eklenir.</p>
+    <p class="muted small">Başlattığın blokların açık kaldığı süre. Bitirirsen o ana kadarki süre eklenir; duraklatılan süre sayılmaz.</p>
   </section>`;
 }
 function refreshWorkCard() {
@@ -485,8 +485,8 @@ function startSession(o) {
     d.prefs.minutes = o.min; d.break = null;
     if (o.plan) d.prefs.plans = [o.plan, ...(d.prefs.plans || []).filter(p => p !== o.plan)].slice(0, 5);
     d.entries.push({ id, ts: now, level: o.level, env: o.env, intv: o.intv, task: o.task, plan: o.plan, trigger: o.trigger || null,
-      plannedMin: o.min, actualMin: null, endTs: null, completed: false, feedback: null, focusShare: null, distr: [] });
-    d.active = { id, start: now, end: now + o.min * 60e3 };
+      plannedMin: o.min, actualMin: null, endTs: null, completed: false, feedback: null, focusShare: null, distr: [], pauses: [] });
+    d.active = { id, start: now, end: now + o.min * 60e3, paused: 0, pause: null };
   });
   resetFlow();
   try { navigator.storage?.persist?.(); } catch {}
@@ -496,14 +496,49 @@ function finishSession(completed) {
     const a = d.active; if (!a) return;
     const e = d.entries.find(x => x.id === a.id);
     if (e) {
-      const end = Math.min(Date.now(), a.end);
-      e.endTs = end; e.actualMin = Math.round((end - a.start) / 60e3); e.completed = completed;
-      if (Date.now() - a.end > 15 * 60e3) e.lateClose = true;
+      if (a.pause) closePause(d, a, Math.min(Date.now() - a.pause.t, a.pause.min * 60e3), pauseLeft(a) <= 0);
+      const end = a.pause ? a.pause.t : Math.min(Date.now(), a.end);
+      e.endTs = end; e.actualMin = Math.round(workedMs(a) / 60e3); e.completed = completed;
+      if (!a.pause && Date.now() - a.end > 15 * 60e3) e.lateClose = true;
     }
     d.active = null;
   });
   syncWakeLock();
 }
+
+// Duraklatma: blok 5 ya da 10 dk bekletilir. Duraklatılan süre çalışmaya sayılmaz.
+// Süre dolarsa blok, duraklatmanın başladığı ana kadarki çalışmayla kapanır (tick).
+const PAUSE_OPTS = [5, 10];
+const pauseLeft = a => a?.pause ? a.pause.t + a.pause.min * 60e3 - Date.now() : 0;
+const blockLeft = a => a.end - (a.pause ? a.pause.t : Date.now());
+const blockTotal = a => a.end - a.start - (a.paused || 0);
+function workedMs(a) {
+  const stop = a.pause ? a.pause.t : Math.min(Date.now(), a.end);
+  return Math.max(0, stop - a.start - (a.paused || 0));
+}
+function closePause(d, a, dur, over) {
+  const e = d.entries.find(x => x.id === a.id), p = e?.pauses?.find(x => x.t === a.pause.t);
+  if (p) { p.dur = dur; if (over) p.over = true; }
+}
+function pauseBlock(min, note) {
+  unlockAudio();
+  Store.update(d => {
+    const a = d.active; if (!a || a.pause) return;
+    const t = Date.now(), e = d.entries.find(x => x.id === a.id);
+    a.pause = { t, min, note: note || "" };
+    if (e) (e.pauses ||= []).push({ t, min, note: note || "", dur: null });
+  });
+}
+function resumeBlock() {
+  Store.update(d => {
+    const a = d.active; if (!a?.pause) return;
+    const dur = Date.now() - a.pause.t;
+    closePause(d, a, dur, false);
+    a.end += dur; a.paused = (a.paused || 0) + dur; a.pause = null;
+  });
+}
+const pauseSummary = ps => (ps || []).filter(p => p.dur != null)
+  .map(p => `${Math.max(1, Math.round(p.dur / 60e3))} dk${p.note ? ` (${esc(p.note)})` : ""}${p.over ? ", süre doldu" : ""}`).join(" · ");
 function cancelSession() {
   Store.update(d => { const a = d.active; if (!a) return; d.entries = d.entries.filter(x => x.id !== a.id); d.active = null; });
   syncWakeLock();
@@ -515,13 +550,37 @@ function viewOdak() {
   const s = Store.get(), a = s.active;
   if (!a) return viewBitti();
   const e = s.entries.find(x => x.id === a.id);
+  const stopEarly = () => {
+    const cur = Store.get().active; if (!cur) return viewBitti();
+    const w = workedMs(cur);
+    if (w < 60e3) { if (confirm("Blok 1 dakikadan kısa. İptal edilsin mi? Kayıt tutulmaz.")) { cancelSession(); location.hash = "#/"; } return; }
+    if (confirm(`Bloğu bitir? Geçen ${fmtMin(Math.round(w / 60e3))} çalışma süresine eklenir.`)) { finishSession(false); viewBitti(); }
+  };
+  if (a.pause) {
+    $app.innerHTML = `
+    <section class="focus">
+      <p class="muted">Görev</p><h2>${esc(e.task)}</h2>
+      <p class="muted small">Duraklatıldı · kalan blok süresi</p>
+      <div class="clock" id="clock">${mmss(blockLeft(a))}</div>
+      <div class="bar"><div id="prog"></div></div>
+      <p>Duraklatmanın bitmesine <b id="pclock">${mmss(pauseLeft(a))}</b></p>
+      ${a.pause.note ? `<p class="note">Sebep: ${esc(a.pause.note)}</p>` : ""}
+      <p class="muted small">Süre dolarsa alarm çalar ve blok, duraklattığın ana kadarki çalışmayla kaydedilir.</p>
+      <div class="row"><button class="btn primary" id="resume">Devam et</button><button class="btn" id="stopEarly">Bitir</button></div>
+      <a class="link" href="#/">Ana sayfa</a>
+    </section>`;
+    document.getElementById("resume").onclick = () => { unlockAudio(); resumeBlock(); viewOdak(); };
+    document.getElementById("stopEarly").onclick = stopEarly;
+    syncWakeLock();
+    return;
+  }
   $app.innerHTML = `
     <section class="focus">
       <p class="muted">Görev</p><h2>${esc(e.task)}</h2>
-      <div class="clock" id="clock">${mmss(a.end - Date.now())}</div>
+      <div class="clock" id="clock">${mmss(blockLeft(a))}</div>
       <div class="bar"><div id="prog"></div></div>
       <div id="distrBox" class="distr"><button class="btn" id="distr">Dikkatim dağıldı</button></div>
-      <div class="row"><button class="btn" id="stopEarly">Durdur</button></div>
+      <div id="pauseBox" class="row"><button class="btn" id="pause">Duraklat</button><button class="btn" id="stopEarly">Bitir</button></div>
       <label class="check small muted"><input type="checkbox" id="wl" ${s.prefs.wakeLock ? "checked" : ""}> Ekranı açık tut</label>
       <p class="muted small">Telefon kilitlenirse bitiş sesi gecikebilir; süre yine doğru sayılır.</p>
       <a class="link" href="#/">Ana sayfa</a>
@@ -540,10 +599,19 @@ function viewOdak() {
     });
   };
   document.getElementById("wl").onchange = ev => { Store.update(d => d.prefs.wakeLock = ev.target.checked); syncWakeLock(); };
-  document.getElementById("stopEarly").onclick = () => {
-    if (Date.now() - a.start < 60e3) { if (confirm("Blok 1 dakikadan kısa. İptal edilsin mi? Kayıt tutulmaz.")) { cancelSession(); location.hash = "#/"; } return; }
-    const m = Math.round((Date.now() - a.start) / 60e3);
-    if (confirm(`Bloğu durdur? Geçen ${fmtMin(m)} çalışma süresine eklenir.`)) { finishSession(false); viewBitti(); }
+  document.getElementById("stopEarly").onclick = stopEarly;
+  document.getElementById("pause").onclick = () => {
+    const box = document.getElementById("pauseBox");
+    box.className = "card ask";
+    box.innerHTML = `<p class="small">Ne kadar duraklatayım? Duraklatılan süre çalışmaya sayılmaz.</p>
+      <input id="pauseNote" maxlength="140" aria-label="Duraklatma sebebi (isteğe bağlı)" placeholder="Sebep (isteğe bağlı): kapı, telefon görüşmesi…">
+      <div class="mins center">${PAUSE_OPTS.map(m => `<button class="chip" data-pm="${m}">${m} dk</button>`).join("")}</div>
+      <div class="row tight center"><button class="btn small" id="pauseCancel">Vazgeç</button></div>`;
+    document.getElementById("pauseNote").focus();
+    box.querySelectorAll("[data-pm]").forEach(b => b.onclick = () => {
+      pauseBlock(+b.dataset.pm, document.getElementById("pauseNote").value.trim()); viewOdak();
+    });
+    document.getElementById("pauseCancel").onclick = viewOdak;
   };
   syncWakeLock();
 }
@@ -555,10 +623,13 @@ function viewBitti() {
   const br = s.break;
   const dn = (last.distr || []).length, dk = topKey(countBy((last.distr || []).filter(d => d.k), d => d.k));
   const askNotif = "Notification" in window && Notification.permission === "default" && !s.prefs.notifAsked;
+  const ps = last.pauses || [], over = ps.some(p => p.over);
+  const rem = last.completed ? 0 : last.plannedMin - last.actualMin;
   $app.innerHTML = `
     <section class="focus">
-      <h2>${last.completed ? "Blok tamamlandı." : "Blok durduruldu."}</h2>
-      <p class="muted">${esc(last.task)} · ${last.actualMin} dk${dn ? ` · ${dn} dağılma${dk ? ` (en çok ${esc(DISTR.find(x => x[0] === dk[0])[1].toLowerCase())})` : ""}` : ""}</p>
+      <h2>${last.completed ? "Blok tamamlandı." : over ? "Duraklatma süresi doldu." : "Blok durduruldu."}</h2>
+      <p class="muted">${esc(last.task)} · ${last.actualMin} dk${dn ? ` · ${dn} dağılma${dk ? ` (en çok ${esc(DISTR.find(x => x[0] === dk[0])[1].toLowerCase())})` : ""}` : ""}${ps.length ? ` · ${ps.length} duraklatma` : ""}</p>
+      ${over ? `<p class="small">Blok, duraklattığın ana kadarki ${last.actualMin} dk ile kaydedildi.</p>` : ""}
       ${last.focusShare == null ? `<div class="card ask">
         ${last.lateClose ? `<p class="small">Blok, uygulama kapalıyken bitti. Süreyi Geçmiş'ten düzeltebilirsin.</p>` : ""}
         <p>Bu bloğun ne kadarı gerçekten odaklıydı?</p>
@@ -572,7 +643,8 @@ function viewBitti() {
         <input id="nextTask" maxlength="140" value="${esc(last.next || last.task)}"></label>
       <div class="row">
         ${br ? "" : `<button class="btn" id="brk5">5 dk mola</button><button class="btn" id="brk10">10 dk mola</button>`}
-        <button class="btn primary" id="again">Devam et</button>
+        ${rem >= 1 ? `<button class="btn primary" id="rest">Kalan ${rem} dk ile devam</button>` : ""}
+        <button class="btn${rem >= 1 ? "" : " primary"}" id="again">${rem >= 1 ? `Yeni blok (${last.plannedMin} dk)` : "Devam et"}</button>
       </div>
       <div class="row"><a class="btn" href="#/blok">Yeni görev</a><a class="btn" href="#/acil">Odağım kaçtı</a></div>
       ${askNotif ? `<div class="card ask"><p class="small">Blok ve mola bitince bildirim göndereyim mi?</p>
@@ -589,12 +661,17 @@ function viewBitti() {
   const b5 = document.getElementById("brk5"), b10 = document.getElementById("brk10");
   if (b5) b5.onclick = () => { saveNext(); startBreak(5); viewBitti(); };
   if (b10) b10.onclick = () => { saveNext(); startBreak(10); viewBitti(); };
-  document.getElementById("again").onclick = () => {
+  const cont = min => {
     unlockAudio(); saveNext();
-    const low = last.focusShare != null && last.focusShare <= 0.25;
-    startSession({ level: 0, env: last.env, intv: null, task: nt.value.trim() || last.task, plan: last.plan, min: low ? Math.min(10, last.plannedMin) : last.plannedMin });
+    startSession({ level: 0, env: last.env, intv: null, task: nt.value.trim() || last.task, plan: last.plan, min });
     viewOdak();
   };
+  document.getElementById("again").onclick = () => {
+    const low = last.focusShare != null && last.focusShare <= 0.25;
+    cont(low ? Math.min(10, last.plannedMin) : last.plannedMin);
+  };
+  const restBtn = document.getElementById("rest");
+  if (restBtn) restBtn.onclick = () => cont(rem);
   const ny = document.getElementById("nYes"), nn = document.getElementById("nNo");
   if (ny) ny.onclick = async () => { Store.update(d => d.prefs.notifAsked = true); try { await Notification.requestPermission(); } catch {} viewBitti(); };
   if (nn) nn.onclick = () => { Store.update(d => d.prefs.notifAsked = true); viewBitti(); };
@@ -602,7 +679,13 @@ function viewBitti() {
 
 function tick() {
   const s = Store.get(), a = s.active;
-  if (a && Date.now() >= a.end) {
+  if (a?.pause && pauseLeft(a) <= 0) {
+    const short = workedMs(a) < 60e3;
+    if (short) cancelSession(); else finishSession(false);
+    const msg = short ? "Blok 1 dakikadan kısa olduğu için kaydedilmedi." : "Blok o ana kadarki süreyle kaydedildi. Kalan süreyle devam edebilirsin.";
+    startAlarm(2, "Duraklatma bitti"); notify("Duraklatma bitti", msg);
+    if (location.hash === "#/odak") { document.body.classList.remove("focusing"); if (short) location.hash = "#/"; else viewBitti(); }
+  } else if (a && !a.pause && Date.now() >= a.end) {
     finishSession(true); startAlarm(2, "Blok tamamlandı"); notify("Blok tamamlandı", "Mola: uyaranı azalt. Sonra aynı görevle devam et.");
     if (location.hash === "#/odak") { document.body.classList.remove("focusing"); viewBitti(); }
   }
@@ -615,11 +698,12 @@ function tick() {
   $timerbar.hidden = !(act || br) || onOdak;
   const c = document.getElementById("clock"), p = document.getElementById("prog");
   if (act) {
-    const left = act.end - Date.now();
-    $timerbar.innerHTML = `<a href="#/odak">Odak bloğu sürüyor: ${mmss(left)}</a>`;
+    const left = blockLeft(act), pl = pauseLeft(act), pc = document.getElementById("pclock");
+    $timerbar.innerHTML = act.pause ? `<a href="#/odak">Blok duraklatıldı: ${mmss(pl)}</a>` : `<a href="#/odak">Odak bloğu sürüyor: ${mmss(left)}</a>`;
     if (c) c.textContent = mmss(left);
-    if (p) p.style.width = `${100 * (1 - left / (act.end - act.start))}%`;
-    document.title = onOdak ? `${mmss(left)} · Odak` : "Kendine Gel";
+    if (pc) pc.textContent = mmss(pl);
+    if (p) p.style.width = `${100 * (1 - left / blockTotal(act))}%`;
+    document.title = onOdak ? (act.pause ? `${mmss(pl)} · Duraklatıldı` : `${mmss(left)} · Odak`) : "Kendine Gel";
   } else if (br) {
     const left = br.end - Date.now();
     $timerbar.innerHTML = `<a href="#/odak">Mola: ${mmss(left)}</a>`;
@@ -761,6 +845,7 @@ function viewGecmis() {
         <header><span>${fmtDate(e.ts)} · ${e.level ? `Seviye ${e.level}` : "Doğrudan"}${e.env ? ` · ${esc(byId(ENVS, e.env)?.label || "")}` : ""}</span><span>${e.actualMin}/${e.plannedMin} dk ${e.completed ? "✓" : ""}</span></header>
         <p><b>${esc(intvTitle(e))}</b> → ${esc(e.task)}</p>
         <p class="fb">${e.focusShare != null ? `Odak: ${focusLabel(e.focusShare)} (${focusedMin(e)} dk net)` : `Odak puanlanmadı: ${FOCUS_OPTS.map(([v, l]) => `<button class="chip xs" data-fsid="${e.id}" data-v="${v}">${l}</button>`).join("")}`}${(e.distr || []).length ? ` · ${e.distr.length} dağılma` : ""}</p>
+        ${pauseSummary(e.pauses) ? `<p class="fb">Duraklatma: ${pauseSummary(e.pauses)}</p>` : ""}
         ${!e.intv ? "" : e.feedback
           ? `<p class="fb">Müdahale: ${workedLbl[e.feedback.worked]}${e.feedback.note ? ` · ${esc(e.feedback.note)}` : ""}</p>`
           : `<details class="fbform"><summary>Müdahale işe yaradı mı?</summary>
