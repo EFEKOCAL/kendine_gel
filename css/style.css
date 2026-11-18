@@ -428,3 +428,4 @@ h2 { font-size: 1.55rem; } h3 { font-size: 1.2rem; }
 .addslot .row label { flex: 1 1 100%; font-size: .8rem; }
 @media (max-width: 760px) { .tt, .tt:has(> .sday:nth-child(6)) { grid-template-columns: 1fr; } }
 .noatt { margin-bottom: 14px; } .noatt p { margin: 0 0 4px; } #noAttForm label { flex: 1 1 140px; }
+.pvd { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0; } .pvd p { margin: 0; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; } .pvd .muted { display: block; font-family: var(--mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; } @media (max-width: 560px) { .pvd { grid-template-columns: 1fr; } } #doneText { width: 100%; box-sizing: border-box; font: inherit; } .resume > .small { display: block; margin: 2px 0 4px; }

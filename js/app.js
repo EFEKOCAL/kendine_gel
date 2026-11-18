@@ -889,6 +889,9 @@ function viewBitti() {
         <div class="mins center">${FOCUS_OPTS.map(([v, l]) => `<button class="chip" data-fs="${v}">${l}</button>`).join("")}</div>
       </div>` : `<p class="muted small">Odak: ${focusLabel(last.focusShare)}</p>
         ${last.focusShare <= 0.25 ? `<p class="note">Düşük odak bir veri, karakter kanıtı değil. Sıradaki blok 10 dk; hâlâ zor geliyorsa önce <a href="#/acil">Protokol</a>'den bir müdahale seç.</p>` : ""}`}
+      <label class="resume">Bu blokta ne yaptın? <span class="muted">(isteğe bağlı; Geçmiş'te planla yan yana görünür)</span>
+        <span class="muted small">Plan: ${esc(last.task)}</span>
+        <textarea id="doneText" rows="2" maxlength="280" placeholder="örn. 2 sayfa okudum, 3 sorudan 2'sini çözdüm">${esc(last.done || "")}</textarea></label>
       ${goalBar(todayEntries(), goalMin())}
       ${br ? `<div class="clock small" id="clock">${mmss(br.end - Date.now())}</div><p class="muted">Mola. Uyaranı azalt: yürü, su iç, uzağa bak.</p>`
            : `<p>Mola uyaransız olmalı: yürü, su iç, uzağa bak. Kısa video mola değil, yeni bir uyarandır.</p>`}
@@ -903,7 +906,14 @@ function viewBitti() {
       ${askNotif ? `<div class="card ask"><p class="small">Blok ve mola bitince bildirim göndereyim mi?</p>
         <div class="row tight center"><button class="btn small" id="nYes">Evet</button><button class="btn small" id="nNo">Hayır</button></div></div>` : ""}
     </section>`;
+  // "Ne yaptın": blok öncesi görev (plan) ile sonrası yan yana kaydedilir (entry.done). Ekran yeniden çizilmeden önce de kaydedilir.
+  const dt = document.getElementById("doneText");
+  let dtTimer = null;
+  const saveDone = () => { clearTimeout(dtTimer); const v = dt.value.trim(); if (v !== (Store.get().entries.find(x => x.id === last.id)?.done || "")) Store.update(d => d.entries.find(x => x.id === last.id).done = v); };
+  dt.oninput = () => { clearTimeout(dtTimer); dtTimer = setTimeout(saveDone, 600); };
+  dt.onchange = saveDone;
   $app.querySelectorAll("[data-fs]").forEach(b => b.onclick = () => {
+    saveDone();
     Store.update(d => { const e = d.entries.find(x => x.id === last.id); e.focusShare = +b.dataset.fs; delete e.lateClose; });
     viewBitti();
   });
@@ -912,10 +922,10 @@ function viewBitti() {
   const saveNext = () => { const v = nt.value.trim(); if (v && v !== last.next) Store.update(d => d.entries.find(x => x.id === last.id).next = v); };
   nt.onchange = saveNext;
   const b5 = document.getElementById("brk5"), b10 = document.getElementById("brk10");
-  if (b5) b5.onclick = () => { saveNext(); startBreak(5); viewBitti(); };
-  if (b10) b10.onclick = () => { saveNext(); startBreak(10); viewBitti(); };
+  if (b5) b5.onclick = () => { saveDone(); saveNext(); startBreak(5); viewBitti(); };
+  if (b10) b10.onclick = () => { saveDone(); saveNext(); startBreak(10); viewBitti(); };
   const cont = min => {
-    unlockAudio(); saveNext();
+    unlockAudio(); saveDone(); saveNext();
     startSession({ level: 0, env: last.env, intv: null, task: nt.value.trim() || last.task, plan: last.plan, min, course: last.course, courseOther: last.courseOther });
     viewOdak();
   };
@@ -1098,6 +1108,7 @@ function viewGecmis() {
       <article class="entry lvb${e.level}">
         <header><span>${fmtDate(e.ts)} · ${e.level ? `Seviye ${e.level}` : "Doğrudan"}${e.env ? ` · ${esc(byId(ENVS, e.env)?.label || "")}` : ""}</span><span>${e.actualMin}/${e.plannedMin} dk ${e.completed ? "✓" : ""}</span></header>
         <p><b>${esc(intvTitle(e))}</b> → ${esc(e.task)}${e.course && courseLabel(e) !== e.task ? ` <span class="ctag">${esc(courseLabel(e))}</span>` : ""}</p>
+        ${e.done ? `<div class="pvd"><p><span class="muted small">Plan</span> ${esc(e.task)}</p><p><span class="muted small">Yapılan</span> ${esc(e.done)}</p></div>` : ""}
         <p class="fb">${e.focusShare != null ? `Odak: ${focusLabel(e.focusShare)} (${focusedMin(e)} dk net)` : `Odak puanlanmadı: ${FOCUS_OPTS.map(([v, l]) => `<button class="chip xs" data-fsid="${e.id}" data-v="${v}">${l}</button>`).join("")}`}${(e.distr || []).length ? ` · ${e.distr.length} dağılma` : ""}</p>
         ${pauseSummary(e.pauses) ? `<p class="fb">Duraklatma: ${pauseSummary(e.pauses)}</p>` : ""}
         ${!e.intv ? "" : e.feedback
@@ -1111,6 +1122,7 @@ function viewGecmis() {
         <details class="fbform"><summary>Düzenle</summary>
           <form data-edit="${e.id}" class="stack">
             <label>Görev <input name="task" maxlength="140" value="${esc(e.task)}"></label>
+            <label>Bu blokta yapılan <textarea name="done" rows="2" maxlength="280">${esc(e.done || "")}</textarea></label>
             <label>Ders <select name="course"><option value="">Yok</option>${[...new Set([...courses(), ...(e.course && e.course !== OTHER ? [e.course] : [])])].map(c => `<option ${c === e.course ? "selected" : ""}>${esc(c)}</option>`).join("")}<option value="${OTHER}" ${e.course === OTHER ? "selected" : ""}>Diğer</option></select></label>
             <label>Süre (dk) <input name="min" type="number" min="0" max="${(e.plannedMin || 60) + 5}" value="${e.actualMin}"></label>
             <div class="row tight"><button class="btn">Kaydet</button><button class="btn danger" type="button" data-del="${e.id}">Kaydı sil</button></div>
@@ -1150,7 +1162,7 @@ function viewGecmis() {
     ev.preventDefault(); const d = new FormData(f);
     Store.update(s => { const e = s.entries.find(x => x.id === f.dataset.edit);
       const m = Math.max(0, Math.min((e.plannedMin || 60) + 5, Math.round(+d.get("min") || 0)));
-      e.actualMin = m; e.task = d.get("task").trim() || e.task;
+      e.actualMin = m; e.task = d.get("task").trim() || e.task; e.done = (d.get("done") || "").trim();
       const c = d.get("course") || null; if (c !== e.course) { e.course = c; if (c !== OTHER) e.courseOther = ""; } });
     viewGecmis();
   });
