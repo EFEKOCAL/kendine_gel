@@ -135,7 +135,7 @@ const GUIDE = [
     lede: "Ödül sistemimiz kıtlık içinde şekillendi; bugün bolluk içinde çalışıyor. Bu yazı evrimsel açıklamaların neyi aydınlattığını ve nerede hipotez olarak kaldığını anlatıyor.",
     sure: "Genel uyumsuzluk çerçevesi kabul görür; tek tek davranışların hangi seçilim baskısından geldiği büyük ölçüde hipotezdir.",
     try: [
-      { t: "Uzak bir hedefi (vize) bugün bitirilebilecek tek bir somut parçaya böl ve yarının ilk bloğuna yaz.", href: "#/" },
+      { t: "Uzak bir hedefi (vize) bugün bitirilebilecek tek bir somut parçaya böl ve bir sonraki bloğu onunla başlat.", href: "#/blok" },
     ],
     cards: [
     { h: "Eski beyin, yeni ortam",
@@ -363,7 +363,7 @@ const GUIDE = [
     lede: "Yorgun bir beyin en kolay seçeneği seçer. Kaçışı birkaç adım zorlaştırmak ve çalışmayı birkaç adım kolaylaştırmak, iradeye güvenmekten daha güvenilirdir. Bu yazı ortamın davranışı nasıl yönlendirdiğini anlatıyor.",
     sure: "Uyaran kontrolü ve sürtünme eklemenin etkisi saha deneyleriyle destekleniyor.",
     try: [
-      { t: "Bu akşam yarının ders materyalini masada açık bırak ve Yarının ilk bloğu planını doldur.", href: "#/" },
+      { t: "Bu akşam yarının ders materyalini masada açık bırak ve Hazırlık listesine göz at.", href: "#/hazirlik" },
       { t: "Oyun ve kısa video kısayollarını ana ekrandan kaldır, oturumları kapat." },
     ],
     cards: [

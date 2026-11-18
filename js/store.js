@@ -3,17 +3,23 @@
 const Store = (() => {
   const KEY = "kendinegel.v1";
   const VERSION = 2;
-  const emptyPrefs = () => ({ env: null, minutes: 20, goalMin: 120, introSeen: false, notifAsked: false, wakeLock: true, plans: [], lastExport: null });
-  const empty = () => ({ v: VERSION, entries: [], active: null, break: null, prefs: emptyPrefs(), guide: {}, prep: null, tomorrow: null, weekly: null });
+  const emptyPrefs = () => ({ env: null, minutes: 20, goalMin: 120, introSeen: false, notifAsked: false, wakeLock: true, plans: [], lastExport: null,
+    // Blok başlatırken buton olarak çıkan dersler ("Diğer" ayrıca her zaman bulunur). Formdan düzenlenebilir.
+    courses: ["İşletim Sistemleri", "Sinyaller ve Sistemler", "Mikrodenetleyiciler", "Yapay Sinir Ağları", "Nesne Yönelimli Programlama", "Atatürk İlkeleri ve İnkılap Tarihi", "Algoritma Analizi"] });
+  // schedule: haftalık ders programı, attend: yoklama kayıtları (ayrıntı app.js → Program).
+  const empty = () => ({ v: VERSION, entries: [], active: null, break: null, prefs: emptyPrefs(), guide: {}, prep: null, tomorrow: null, weekly: null, schedule: [], attend: {} });
   let mem = null, saveFailed = false;
 
   function migrate(d) {
     const out = Object.assign(empty(), d);
     out.prefs = { ...emptyPrefs(), ...(d.prefs || {}) };
     out.guide = d.guide || {};
+    out.schedule = Array.isArray(d.schedule) ? d.schedule : [];
+    out.attend = d.attend && typeof d.attend === "object" ? d.attend : {};
     // v1 → v2: focusShare (bloğun odaklı kısmı) ve distr (dağılma kaydı) alanları.
     // pauses: blok içi duraklatmalar [{t, min, note, dur(ms), over}].
-    out.entries = (d.entries || []).map(e => ({ focusShare: null, distr: [], trigger: null, pauses: [], ...e }));
+    // course: ders adı, "diger" ya da null; courseOther: "Diğer" seçildiyse serbest metin.
+    out.entries = (d.entries || []).map(e => ({ focusShare: null, distr: [], trigger: null, pauses: [], course: null, courseOther: "", ...e }));
     out.v = VERSION;
     return out;
   }

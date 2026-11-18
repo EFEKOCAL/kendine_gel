@@ -147,6 +147,7 @@ function workTotals() {
   return t;
 }
 const fmtHours = m => m >= 600 ? `${Math.round(m / 6) / 10} sa`.replace(".", ",") : fmtMin(m);
+const fmtShort = m => m % 60 ? fmtHours(m) : `${m / 60} sa`;
 function workCard() {
   const t = workTotals(), live = !!Store.get().active;
   const cell = (k, l) => `<div><b data-wt="${k}">${fmtHours(t[k])}</b><span>${l}</span></div>`;
@@ -161,6 +162,244 @@ function refreshWorkCard() {
   if (!els.length) return;
   const t = workTotals();
   els.forEach(el => el.textContent = fmtHours(t[el.dataset.wt]));
+  const cc = document.getElementById("courseCard"); if (cc) cc.outerHTML = courseCard();
+}
+
+// ---------- Dersler ----------
+// Ders bazlı çalışma süresi (Σ actualMin, odak oranı düşülmez; workTotals ile aynı ölçü).
+// "Diğer" sıralamaya girmez, tablonun sonunda ayrı satırda durur.
+const OTHER = "diger";
+const courses = () => Store.get().prefs.courses || [];
+const courseLabel = e => !e.course ? "" : e.course === OTHER ? `Diğer${e.courseOther ? `: ${e.courseOther}` : ""}` : e.course;
+function courseTotals() {
+  const s = Store.get(), a = s.active, now = Date.now(), wk = weekStart(now), rows = {};
+  const add = (c, ts, m) => {
+    const r = rows[c] ||= { wk: 0, m: 0, all: 0 };
+    r.all += m; if (now - ts < 30 * DAY) r.m += m; if (ts >= wk) r.wk += m;
+  };
+  doneEntries().forEach(e => e.course && add(e.course, e.ts, e.actualMin || 0));
+  const ae = a && s.entries.find(x => x.id === a.id);
+  if (ae?.course) add(ae.course, ae.ts, Math.floor(workedMs(a) / 60e3));
+  return rows;
+}
+// Haftalık en az çalışma hedefi: her ders için sabit 1 saat (Pazartesi–Pazar), elle girilmez.
+// Derste anlatılanın tekrarı önceden belirlenmez; o dersle başlatılan bloklar sayılır. Fazlası sorun değil.
+const WEEK_GOAL_MIN = 60;
+const courseGoal = c => c === OTHER ? 0 : WEEK_GOAL_MIN;
+
+// Ders seçimi gelmeden önceki bloklar: ders, görev notundan anahtar kelimeyle bulunur.
+// Tek bir derse uyuyorsa o derse, hiçbirine ya da birden fazlasına uyuyorsa "Diğer"e yazılır.
+// Kesim tarihinden sonraki bloklara dokunulmaz (orada ders bilerek boş bırakılmış olabilir). Geçmiş → Düzenle ile düzeltilebilir.
+const COURSE_BACKFILL_BEFORE = new Date(2026, 10, 20).getTime();
+const COURSE_KEYWORDS = {
+  "İşletim Sistemleri": /isletim|\bos\b|operating|\bisl\.? ?sis/,
+  "Sinyaller ve Sistemler": /sinyal|signal|fourier|laplace|konvolusyon|convolution/,
+  "Mikrodenetleyiciler": /mikro ?denet|mikro\b|microcontroller|\bmcu\b|arduino|stm32|gomulu|embedded/,
+  "Yapay Sinir Ağları": /sinir ag|\bysa\b|neural|perceptron|backprop|yapay sinir/,
+  "Nesne Yönelimli Programlama": /nesne|\boop\b|\bnyp\b|object.?orient|kalitim|inheritance|polimorf/,
+  "Atatürk İlkeleri ve İnkılap Tarihi": /ataturk|inkilap|\bait\b|\bink\.? ?tar/,
+  "Algoritma Analizi": /algoritma|algorithm|\balgo\b|big.?o\b|karmasiklik|complexity|recurrence|master teorem/,
+};
+const fold = t => String(t || "").toLocaleLowerCase("tr").replace(/[ıİ]/g, "i").replace(/ş/g, "s").replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c").replace(/â/g, "a");
+function guessCourse(text) {
+  const t = fold(text), hits = Object.keys(COURSE_KEYWORDS).filter(c => COURSE_KEYWORDS[c].test(t));
+  return hits.length === 1 ? hits[0] : OTHER;
+}
+function backfillCourses() {
+  const need = Store.get().entries.some(e => !e.course && e.endTs && e.ts < COURSE_BACKFILL_BEFORE);
+  if (!need) return;
+  Store.update(d => d.entries.forEach(e => {
+    if (e.course || !e.endTs || e.ts >= COURSE_BACKFILL_BEFORE) return;
+    e.course = guessCourse(`${e.task || ""} ${e.next || ""}`); e.courseOther = ""; e.courseAuto = true;
+  }));
+}
+function weekCell(min, goal) {
+  if (!goal) return fmtHours(min);
+  const pct = Math.min(100, Math.round(100 * min / goal));
+  return `${fmtHours(min)} <span class="muted">/ ${fmtShort(goal)}</span>
+    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="${goal}" aria-valuenow="${min}" aria-label="Haftalık hedef"><div class="${min >= goal ? "hit" : ""}" style="width:${pct}%"></div></div>`;
+}
+function courseCard() {
+  const rows = courseTotals(), other = rows[OTHER], z = { wk: 0, m: 0, all: 0 };
+  courses().forEach(c => { rows[c] ||= { ...z }; });
+  const list = Object.keys(rows).filter(c => c !== OTHER && (rows[c].all > 0 || courses().includes(c))).sort((x, y) => rows[y].all - rows[x].all || rows[y].wk - rows[x].wk);
+  if (!list.length && !other?.all) return `<div id="courseCard" hidden></div>`;
+  const tr = (name, r, goal, cls = "") => `<tr${cls}><td>${esc(name)}</td><td class="wk">${weekCell(r.wk, goal)}</td><td>${fmtHours(r.m)}</td><td><b>${fmtHours(r.all)}</b></td></tr>`;
+  return `<section class="card work courses" id="courseCard">
+    <p class="muted small">Derslere göre çalışma süresi · haftalık hedef her ders için 1 saat (<a href="#/program">Ders programı</a>)</p>
+    <table class="tbl"><tr><th>Ders</th><th>Bu hafta</th><th>30 gün</th><th>Toplam</th></tr>
+      ${list.map(c => tr(c, rows[c], courseGoal(c))).join("")}
+      ${other?.all ? tr("Diğer", other, 0, ' class="other"') : ""}
+    </table>
+  </section>`;
+}
+
+// ---------- Program: haftalık ders programı, yoklama ----------
+// schedule: [{id, course, day (0=Pzt … 6=Paz), start "09:00", end "10:50", place, since (gün anahtarı)}]
+// attend: { "YYYY-MM-DD|slotId": {c: ders, st: "gittim"|"gitmedim"|"yok", t: başlangıç} }
+// Ders saatinin başlangıcı geçince yoklama sorulur. Programdan silinen dersin yoklama kayıtları kalır.
+const DAYS = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
+const ATTEND = [["gittim", "Gittim"], ["gitmedim", "Gitmedim"], ["yok", "Ders yapılmadı"]];
+const weekday = ts => (new Date(ts).getDay() + 6) % 7;
+const atTime = (key, hm) => { const [y, mo, d] = key.split("-").map(Number), [h, mi] = hm.split(":").map(Number); return new Date(y, mo - 1, d, h, mi).getTime(); };
+const slotSort = (a, b) => a.day - b.day || a.start.localeCompare(b.start);
+// Geçmiş ders saatleri (en yeni önce). Başlangıç: yoklama başlangıç tarihi ya da dersin programa eklendiği gün; en çok 16 hafta geriye.
+function lectureOccurrences(days = 112) {
+  const s = Store.get(), now = Date.now(), out = [];
+  const from = Math.max(now - days * DAY, weekStart(now) - 16 * 7 * DAY);
+  for (const sl of s.schedule || []) {
+    const startKey = s.prefs.attendFrom && s.prefs.attendFrom < sl.since ? s.prefs.attendFrom : sl.since;
+    for (let t = weekStart(from) + sl.day * DAY; t <= now; t += 7 * DAY) {
+      const key = dayKey(t); if (key < startKey || t < from - DAY) continue;
+      const ts = atTime(key, sl.start); if (ts > now) continue;
+      const id = `${key}|${sl.id}`, rec = s.attend?.[id];
+      out.push({ id, ts, key, course: sl.course, start: sl.start, end: sl.end, st: rec?.st || null });
+    }
+  }
+  // Programdan silinmiş derslerin kayıtları
+  const seen = new Set(out.map(o => o.id));
+  for (const [id, r] of Object.entries(s.attend || {})) if (!seen.has(id)) {
+    const key = id.split("|")[0]; out.push({ id, ts: atTime(key, r.t || "00:00"), key, course: r.c, start: r.t || "", st: r.st });
+  }
+  return out.sort((a, b) => b.ts - a.ts);
+}
+const pendingAttendance = (days = 7) => lectureOccurrences().filter(o => !o.st && Date.now() - o.ts < days * DAY);
+function setAttend(id, course, start, st) {
+  Store.update(d => { d.attend ||= {}; if (st) d.attend[id] = { c: course, st, t: start }; else delete d.attend[id]; });
+}
+function attendButtons(o) {
+  return `<div class="row tight">${ATTEND.map(([k, l]) => `<button class="chip xs${o.st === k ? " on" : ""}" data-att="${esc(o.id)}" data-c="${esc(o.course)}" data-t="${esc(o.start)}" data-v="${k}">${l}</button>`).join("")}</div>`;
+}
+function bindAttend(after) {
+  $app.querySelectorAll("[data-att]").forEach(b => b.onclick = () => {
+    const cur = Store.get().attend?.[b.dataset.att]?.st;
+    setAttend(b.dataset.att, b.dataset.c, b.dataset.t, cur === b.dataset.v ? null : b.dataset.v); after();
+  });
+}
+const occLabel = o => `${new Date(o.ts).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" })} ${o.start}`;
+// Ana sayfa: bugünün dersleri ve cevaplanmamış yoklamalar
+function attendHomeCard() {
+  const s = Store.get(), today = weekday(Date.now()), now = Date.now();
+  const todays = (s.schedule || []).filter(sl => sl.day === today).sort(slotSort);
+  const pend = pendingAttendance().slice(0, 4);
+  if (!todays.length && !pend.length) return "";
+  return `<section class="card attend">
+    ${todays.length ? `<p class="muted small">Bugünkü dersler</p><p>${todays.map(sl => `<span${atTime(todayKey(), sl.end || sl.start) < now ? ' class="muted"' : ""}>${esc(sl.start)} ${esc(sl.course)}</span>`).join(" · ")}</p>` : ""}
+    ${pend.length ? `<p class="muted small">Derse gittin mi?</p>${pend.map(o => `<div class="attrow"><span>${esc(occLabel(o))} · <b>${esc(o.course)}</b></span>${attendButtons(o)}</div>`).join("")}` : ""}
+  </section>`;
+}
+function attendanceStats() {
+  const r = {};
+  for (const o of lectureOccurrences()) {
+    if (!o.st || o.st === "yok") continue;
+    const x = r[o.course] ||= { go: 0, n: 0, go4: 0, n4: 0 };
+    x.n++; if (o.st === "gittim") x.go++;
+    if (Date.now() - o.ts < 28 * DAY) { x.n4++; if (o.st === "gittim") x.go4++; }
+  }
+  return r;
+}
+function viewProgram() {
+  const s = Store.get(), cs = courses(), slots = (s.schedule || []).slice().sort(slotSort);
+  const rows = courseTotals(), st = attendanceStats(), occ = lectureOccurrences();
+  const pct = (a, b) => b ? `${a}/${b} (%${Math.round(100 * a / b)})` : "–";
+  const byWeek = {};
+  occ.forEach(o => (byWeek[weekStart(o.ts)] ||= []).push(o));
+  // Hafta içi 5 gün her zaman görünür; hafta sonu yalnızca o güne ders girilmişse.
+  const showDays = DAYS.map((dn, i) => i).filter(i => i < 5 || slots.some(x => x.day === i));
+  $app.innerHTML = `
+    <h2>Ders programı</h2>
+    <p class="muted small">Her günün altındaki "Ders ekle" ile o günün derslerini gir. Ders saati başlayınca ana sayfada "Derse gittin mi?" sorulur; aşağıdaki Yoklama bölümünden geçmişe dönük de işaretleyebilirsin.</p>
+    <div class="tt">${showDays.map(i => { const ds = slots.filter(x => x.day === i); return `
+      <div class="sday"><h4>${DAYS[i]}</h4>
+        ${ds.length ? ds.map(x => `<div class="slot"><span class="stime">${esc(x.start)}${x.end ? `–${esc(x.end)}` : ""}</span><span><b>${esc(x.course)}</b>${x.place ? ` <span class="muted">· ${esc(x.place)}</span>` : ""}</span><button class="link inline" data-delslot="${x.id}" aria-label="${esc(x.course)} ${DAYS[i]} ${esc(x.start)} sil">sil</button></div>`).join("") : `<p class="muted small">Ders yok</p>`}
+        <details class="addslot"><summary>Ders ekle</summary>
+          <form class="stack" data-slotday="${i}">
+            <select name="course" required aria-label="Ders">${cs.map(c => `<option>${esc(c)}</option>`).join("")}</select>
+            <div class="row tight"><label>Başlangıç <input type="time" name="start" required value="${esc(ds.at(-1)?.end || "09:00")}"></label><label>Bitiş <input type="time" name="end"></label></div>
+            <input name="place" maxlength="40" placeholder="Derslik (isteğe bağlı)" aria-label="Derslik">
+            <button class="btn small primary">Ekle</button>
+          </form></details>
+      </div>`; }).join("")}</div>
+
+    <h3>Yoklama</h3>
+    <form id="attFromForm" class="goal-form"><label>Dönem başı <input type="date" name="from" value="${esc(s.prefs.attendFrom || "")}"></label><button class="btn">Kaydet</button></form>
+    <p class="muted small">Dönem başını girersen o tarihten bu yana geçen ders saatleri listelenir ve geriye dönük işaretlenebilir. Girmezsen yoklama, dersin programa eklendiği günden başlar. "Ders yapılmadı" orana girmez. Seçili butona tekrar dokununca işaret kalkar.</p>
+    ${Object.keys(st).length ? `<table class="tbl"><tr><th>Ders</th><th>Son 4 hafta</th><th>Tümü</th></tr>
+      ${Object.keys(st).sort().map(c => `<tr><td>${esc(c)}</td><td>${pct(st[c].go4, st[c].n4)}</td><td>${pct(st[c].go, st[c].n)}</td></tr>`).join("")}</table>` : ""}
+    ${occ.length ? Object.keys(byWeek).sort((a, b) => b - a).map(w => `
+      <div class="attweek"><h4>${new Date(+w).toLocaleDateString("tr-TR", { day: "numeric", month: "long" })} haftası</h4>
+      ${byWeek[w].map(o => `<div class="attrow"><span>${esc(occLabel(o))} · <b>${esc(o.course)}</b></span>${attendButtons(o)}</div>`).join("")}</div>`).join("")
+      : `<p class="muted">Geçmiş ders saati yok.</p>`}
+
+    <h3>Haftalık çalışma hedefi</h3>
+    <p class="muted small">Her ders için haftada en az 1 saat (Pazartesi–Pazar). O dersle başlattığın bloklar sayılır; fazlası sorun değil.</p>
+    <section class="card goals">
+      <table class="tbl"><tr><th>Ders</th><th>Bu hafta</th></tr>
+      ${cs.map(c => `<tr><td>${esc(c)}</td><td class="wk">${weekCell(rows[c]?.wk || 0, courseGoal(c))}</td></tr>`).join("")}
+      </table>
+    </section>
+
+    <h3>Dersler</h3>
+    <form id="coursesForm" class="stack">
+      <textarea name="list" rows="${Math.max(3, cs.length)}" aria-label="Dersler, her satıra bir tane">${esc(cs.join("\n"))}</textarea>
+      <button class="btn">Ders listesini kaydet</button>
+      <p class="muted small">Her satıra bir ders. Adı değişen ders yeni ders sayılır; eski adla tutulan süre ve yoklama kayıtlarda kalır.</p>
+    </form>`;
+
+  $app.querySelectorAll("[data-slotday]").forEach(form => form.onsubmit = e => {
+    e.preventDefault(); const f = new FormData(form);
+    const sl = { id: Date.now().toString(36), course: f.get("course"), day: +form.dataset.slotday, start: f.get("start"), end: f.get("end") || "", place: f.get("place").trim(), since: todayKey() };
+    if (!sl.course || !sl.start) return;
+    Store.update(d => (d.schedule ||= []).push(sl)); viewProgram();
+    // Aynı güne art arda ders girilebilsin diye o günün formu açık kalır.
+    const again = $app.querySelector(`[data-slotday="${sl.day}"]`); if (again) { again.closest("details").open = true; again.querySelector("select").focus(); }
+  });
+  $app.querySelectorAll("[data-delslot]").forEach(b => b.onclick = () => {
+    if (!confirm("Bu ders saati programdan silinsin mi? İşaretlenmiş yoklamalar kalır.")) return;
+    Store.update(d => d.schedule = (d.schedule || []).filter(x => x.id !== b.dataset.delslot)); viewProgram();
+  });
+  document.getElementById("attFromForm").onsubmit = e => {
+    e.preventDefault(); const v = new FormData(e.target).get("from") || null;
+    Store.update(d => d.prefs.attendFrom = v); viewProgram();
+  };
+  document.getElementById("coursesForm").onsubmit = e => {
+    e.preventDefault();
+    const list = [...new Set(new FormData(e.target).get("list").split("\n").map(x => x.trim()).filter(Boolean))].slice(0, 20);
+    Store.update(d => d.prefs.courses = list); viewProgram();
+  };
+  bindAttend(viewProgram);
+}
+// Başlangıç formundaki ders butonları. Seçim isteğe bağlı; "Diğer" seçilince metin kutusu açılır.
+function courseChips(cur, curOther) {
+  const cs = courses();
+  if (cur && cur !== OTHER && !cs.includes(cur)) cur = null;
+  return `<fieldset class="coursepick"><legend>Ders <span class="muted">(isteğe bağlı)</span></legend>
+    <div class="mins">${cs.map(c => `<label class="chip"><input type="radio" name="course" value="${esc(c)}" ${c === cur ? "checked" : ""}> ${esc(c)}</label>`).join("")}
+      <label class="chip"><input type="radio" name="course" value="${OTHER}" ${cur === OTHER ? "checked" : ""}> Diğer</label></div>
+    <input name="courseOther" maxlength="80" placeholder="Ne çalışacaksın? (isteğe bağlı)" value="${esc(curOther || "")}" ${cur === OTHER ? "" : "hidden"} aria-label="Diğer: ne çalışacaksın">
+    <details class="fbform"><summary>Dersleri düzenle</summary>
+      <textarea id="courseEdit" rows="${Math.max(3, cs.length)}" aria-label="Dersler, her satıra bir tane">${esc(cs.join("\n"))}</textarea>
+      <button class="btn small" type="button" id="courseSave">Kaydet</button>
+      <p class="muted small">Her satıra bir ders. Listeden çıkan dersin geçmiş süresi kayıtlarda kalır.</p></details>
+  </fieldset>`;
+}
+function bindCourseChips(form) {
+  const other = form.querySelector("[name=courseOther]"), radios = form.querySelectorAll("[name=course]");
+  const mark = () => radios.forEach(x => x.dataset.was = x.checked ? "1" : "");
+  radios.forEach(r => r.onclick = () => {
+    if (r.dataset.was === "1") r.checked = false; // seçili butona tekrar dokununca seçim kalkar
+    mark();
+    other.hidden = !(r.checked && r.value === OTHER);
+    if (!other.hidden) other.focus();
+  });
+  mark();
+  form.querySelector("#courseSave").onclick = () => {
+    const list = [...new Set(form.querySelector("#courseEdit").value.split("\n").map(x => x.trim()).filter(Boolean))].slice(0, 20);
+    Store.update(d => d.prefs.courses = list);
+    const cur = form.querySelector("[name=course]:checked")?.value;
+    form.querySelector(".coursepick").outerHTML = courseChips(cur, other.value);
+    bindCourseChips(form);
+  };
 }
 
 function weekSummary(start) {
@@ -215,40 +454,6 @@ function bindWeekly() {
   document.getElementById("weeklySkip").onclick = () => { Store.update(d => d.weekly = { week, change: "" }); viewHome(); };
 }
 
-function planCard() {
-  const s = Store.get(), t = s.tomorrow, hour = new Date().getHours();
-  const envLabel = id => byId(ENVS, id)?.label || "";
-  if (t?.date === todayKey() && !todayEntries().length) {
-    return `<section class="card plan-today"><p class="muted small">Dün akşam planladığın ilk blok</p>
-      <p><b>${esc(t.task)}</b>${t.time ? ` · ${esc(t.time)}` : ""}${t.env ? ` · ${esc(envLabel(t.env))}` : ""}</p>
-      <div><a class="btn primary" href="#/blok">Şimdi başlat</a></div></section>`;
-  }
-  if (t?.date === tomorrowKey()) {
-    return `<p class="muted small">Yarının ilk bloğu: ${esc(t.task)}${t.time ? ` · ${esc(t.time)}` : ""} <button class="link inline" id="planClear">değiştir</button></p>`;
-  }
-  if (hour < 18) return "";
-  return `<form id="planForm" class="card">
-    <h3>Yarının ilk bloğu</h3>
-    <p class="muted small">Ne, ne zaman, nerede: önceden verilen karar sabah başlamayı kolaylaştırır.</p>
-    <label>Görev <input name="task" required maxlength="140" placeholder="örn. Olasılık 4. bölüm, ilk 3 soru"></label>
-    <div class="row tight">
-      <label class="grow">Saat <input name="time" type="time" value="09:00"></label>
-      <label class="grow">Yer <select name="env">${ENVS.map(e => `<option value="${e.id}" ${s.prefs.env === e.id ? "selected" : ""}>${e.label}</option>`).join("")}</select></label>
-    </div>
-    <button class="btn">Planı kaydet</button>
-  </form>`;
-}
-function bindPlan() {
-  const f = document.getElementById("planForm");
-  if (f) f.onsubmit = ev => {
-    ev.preventDefault(); const d = new FormData(f);
-    Store.update(s => s.tomorrow = { date: tomorrowKey(), task: d.get("task").trim(), time: d.get("time"), env: d.get("env") });
-    viewHome();
-  };
-  const c = document.getElementById("planClear");
-  if (c) c.onclick = () => { Store.update(s => s.tomorrow = null); viewHome(); };
-}
-
 function introCard() {
   return `<section class="card intro">
     <h2>Kendine Gel</h2>
@@ -290,8 +495,9 @@ function viewHome() {
       ${goalBar(todayEntries(), goalMin())}
     </section>
     ${workCard()}
+    ${courseCard()}
+    ${attendHomeCard()}
     <div id="fsHome">${fsHomeNote()}</div>
-    ${planCard()}
     ${weeklyCard()}
     ${needBackup ? `<p class="note">Veriler yalnızca bu tarayıcıda. Son yedek: ${s.prefs.lastExport ? `${Math.floor((Date.now() - s.prefs.lastExport) / DAY)} gün önce` : "hiç alınmadı"}. <button class="link inline" id="quickExport">Şimdi dışa aktar</button></p>` : ""}
     <div class="grid2">
@@ -299,7 +505,7 @@ function viewHome() {
       <a class="tile" href="#/rehber"><h3>Rehber</h3><p>Kaynaklı kısa yazılar: neden kaçıyoruz, ödül sistemi, telefon ve kısa video, uyku, verimli çalışma.</p></a>
       <a class="tile" href="#/gecmis"><h3>Geçmiş ${pending ? `<span class="pill">${pending} geri bildirim bekliyor</span>` : ""}</h3><p>Net süre, haftalar, kayma saatlerin, dağılma nedenlerin ve sende işe yarayan müdahaleler.</p></a>
     </div>`;
-  bindIntro(); bindPlan(); bindWeekly();
+  bindIntro(); bindWeekly(); bindAttend(viewHome);
   const qe = document.getElementById("quickExport"); if (qe) qe.onclick = () => { exportData(); viewHome(); };
 }
 
@@ -345,6 +551,10 @@ function lengthHint(min) {
   if (k <= 2 && i > 0) return { min: MINS[i - 1], text: `Son 5 ${min} dk bloğunun ${k} tanesi tamamlandı. Kısa blok daha çok tamamlanır: ${MINS[i - 1]} dk seçildi.` };
   return null;
 }
+function defaultCourse() {
+  const last = doneEntries().slice(-1)[0];
+  return last && dayKey(last.ts) === todayKey() ? { c: last.course, o: last.courseOther } : { c: null, o: "" };
+}
 function defaultTask() {
   const s = Store.get(), last = doneEntries().slice(-1)[0];
   if (s.tomorrow?.date === todayKey() && !todayEntries().length) return s.tomorrow.task;
@@ -353,10 +563,12 @@ function defaultTask() {
 function startForm(opts) {
   const s = Store.get(), base = MINS.includes(s.prefs.minutes) ? s.prefs.minutes : 20;
   const hint = opts.min ? null : lengthHint(base), sel = opts.min || (hint ? hint.min : base);
-  const plans = (s.prefs.plans || []).slice(0, 5);
+  const plans = (s.prefs.plans || []).slice(0, 5), dc = defaultCourse();
   return `<form id="startForm" class="card">
-    <label>Başlangıç görevi <span class="muted">(somut ve küçük)</span>
-      <input name="task" required maxlength="140" value="${esc(opts.task ?? defaultTask())}" placeholder="örn. Ayrık Matematik 3. bölüm, ilk 2 sayfa"></label>
+    ${courseChips(dc.c, dc.o)}
+    <label>Başlangıç görevi <span class="muted">(somut ve küçük; ders seçtiysen boş bırakılabilir)</span>
+      <input name="task" maxlength="140" value="${esc(opts.task ?? defaultTask())}" placeholder="örn. 3. bölüm, ilk 2 sayfa"></label>
+    <p class="muted small" id="startErr" role="alert"></p>
     <label>En olası engel ve cevabın <span class="muted">(eğer–o zaman, isteğe bağlı)</span>
       <input name="plan" maxlength="140" list="planList" value="${esc(opts.plan ?? plans[0] ?? "")}" placeholder="örn. telefona uzanırsam → çantaya koyarım"></label>
     <datalist id="planList">${plans.map(p => `<option value="${esc(p)}">`).join("")}</datalist>
@@ -367,11 +579,17 @@ function startForm(opts) {
   </form>`;
 }
 function bindStartForm(extra) {
-  document.getElementById("startForm").onsubmit = e => {
+  const form = document.getElementById("startForm");
+  bindCourseChips(form);
+  form.onsubmit = e => {
     e.preventDefault();
     const f = new FormData(e.target);
+    const course = f.get("course") || null, courseOther = course === OTHER ? (f.get("courseOther") || "").trim() : "";
+    // Ders seçildiyse görev boş kalabilir; görev adı ders adı olur.
+    const task = f.get("task").trim() || (course ? courseLabel({ course, courseOther }) : "");
+    if (!task) { document.getElementById("startErr").textContent = "Bir ders seç ya da başlangıç görevini yaz."; form.querySelector("[name=task]").focus(); return; }
     unlockAudio();
-    startSession({ ...extra(), task: f.get("task").trim(), plan: f.get("plan").trim(), min: +f.get("min") || 20 });
+    startSession({ ...extra(), task, course, courseOther, plan: f.get("plan").trim(), min: +f.get("min") || 20 });
     location.hash = "#/odak";
   };
 }
@@ -500,6 +718,7 @@ function startSession(o) {
     d.prefs.minutes = o.min; d.break = null;
     if (o.plan) d.prefs.plans = [o.plan, ...(d.prefs.plans || []).filter(p => p !== o.plan)].slice(0, 5);
     d.entries.push({ id, ts: now, level: o.level, env: o.env, intv: o.intv, task: o.task, plan: o.plan, trigger: o.trigger || null,
+      course: o.course || null, courseOther: o.courseOther || "",
       plannedMin: o.min, actualMin: null, endTs: null, completed: false, feedback: null, focusShare: null, distr: [], pauses: [] });
     d.active = { id, start: now, end: now + o.min * 60e3, paused: 0, pause: null };
   });
@@ -680,7 +899,7 @@ function viewBitti() {
   if (b10) b10.onclick = () => { saveNext(); startBreak(10); viewBitti(); };
   const cont = min => {
     unlockAudio(); saveNext();
-    startSession({ level: 0, env: last.env, intv: null, task: nt.value.trim() || last.task, plan: last.plan, min });
+    startSession({ level: 0, env: last.env, intv: null, task: nt.value.trim() || last.task, plan: last.plan, min, course: last.course, courseOther: last.courseOther });
     viewOdak();
   };
   document.getElementById("again").onclick = () => {
@@ -825,6 +1044,7 @@ function viewGecmis() {
     <h2>Geçmiş</h2>
     ${heavyPattern() ? `<p class="note warn">Son iki haftada sık ve ağır kayma kaydın var. Bu tek başına bir şey göstermez; ama uyku, ruh hâli veya dikkatle ilgili sürekli bir sorun olabilir. <a href="#/rehber/belirti">Alışkanlık mı, belirti mi?</a></p>` : ""}
     ${workCard()}
+    ${courseCard()}
     <p class="muted small" id="persistNote"></p>
     <h3>Net süre (odak oranıyla)</h3>
     <div class="stats">
@@ -860,7 +1080,7 @@ function viewGecmis() {
     <div class="entries">${done.slice().reverse().slice(0, 60).map(e => `
       <article class="entry lvb${e.level}">
         <header><span>${fmtDate(e.ts)} · ${e.level ? `Seviye ${e.level}` : "Doğrudan"}${e.env ? ` · ${esc(byId(ENVS, e.env)?.label || "")}` : ""}</span><span>${e.actualMin}/${e.plannedMin} dk ${e.completed ? "✓" : ""}</span></header>
-        <p><b>${esc(intvTitle(e))}</b> → ${esc(e.task)}</p>
+        <p><b>${esc(intvTitle(e))}</b> → ${esc(e.task)}${e.course && courseLabel(e) !== e.task ? ` <span class="ctag">${esc(courseLabel(e))}</span>` : ""}</p>
         <p class="fb">${e.focusShare != null ? `Odak: ${focusLabel(e.focusShare)} (${focusedMin(e)} dk net)` : `Odak puanlanmadı: ${FOCUS_OPTS.map(([v, l]) => `<button class="chip xs" data-fsid="${e.id}" data-v="${v}">${l}</button>`).join("")}`}${(e.distr || []).length ? ` · ${e.distr.length} dağılma` : ""}</p>
         ${pauseSummary(e.pauses) ? `<p class="fb">Duraklatma: ${pauseSummary(e.pauses)}</p>` : ""}
         ${!e.intv ? "" : e.feedback
@@ -874,6 +1094,7 @@ function viewGecmis() {
         <details class="fbform"><summary>Düzenle</summary>
           <form data-edit="${e.id}" class="stack">
             <label>Görev <input name="task" maxlength="140" value="${esc(e.task)}"></label>
+            <label>Ders <select name="course"><option value="">Yok</option>${[...new Set([...courses(), ...(e.course && e.course !== OTHER ? [e.course] : [])])].map(c => `<option ${c === e.course ? "selected" : ""}>${esc(c)}</option>`).join("")}<option value="${OTHER}" ${e.course === OTHER ? "selected" : ""}>Diğer</option></select></label>
             <label>Süre (dk) <input name="min" type="number" min="0" max="${(e.plannedMin || 60) + 5}" value="${e.actualMin}"></label>
             <div class="row tight"><button class="btn">Kaydet</button><button class="btn danger" type="button" data-del="${e.id}">Kaydı sil</button></div>
           </form></details>
@@ -912,7 +1133,8 @@ function viewGecmis() {
     ev.preventDefault(); const d = new FormData(f);
     Store.update(s => { const e = s.entries.find(x => x.id === f.dataset.edit);
       const m = Math.max(0, Math.min((e.plannedMin || 60) + 5, Math.round(+d.get("min") || 0)));
-      e.actualMin = m; e.task = d.get("task").trim() || e.task; });
+      e.actualMin = m; e.task = d.get("task").trim() || e.task;
+      const c = d.get("course") || null; if (c !== e.course) { e.course = c; if (c !== OTHER) e.courseOther = ""; } });
     viewGecmis();
   });
   $app.querySelectorAll("[data-del]").forEach(b => b.onclick = () => {
@@ -974,7 +1196,7 @@ FileSync.onChange(() => {
   const h = document.getElementById("fsHome"); if (h) h.innerHTML = fsHomeNote();
 });
 // Dosyadan gelen veri yerel veriyi değiştirdiyse ekranı tazele (yazarken değil).
-window.addEventListener("kendinegel:data", () => { if (!document.activeElement?.closest("input, textarea, select")) route(); });
+window.addEventListener("kendinegel:data", () => { backfillCourses(); if (!document.activeElement?.closest("input, textarea, select")) route(); });
 
 function exportData() {
   Store.update(d => d.prefs.lastExport = Date.now());
@@ -1120,7 +1342,7 @@ function route() {
   document.querySelectorAll("[data-nav]").forEach(a => a.classList.toggle("on", a.dataset.nav === page));
   if (page !== "acil") resetFlow();
   document.body.classList.toggle("focusing", page === "odak" && !!Store.get().active);
-  ({ acil: viewAcil, blok: viewBlok, odak: viewOdak, hazirlik: viewHazirlik, gecmis: viewGecmis, rehber: () => viewRehber(sub, sub2) }[page] || viewHome)();
+  ({ acil: viewAcil, blok: viewBlok, odak: viewOdak, hazirlik: viewHazirlik, gecmis: viewGecmis, program: viewProgram, rehber: () => viewRehber(sub, sub2) }[page] || viewHome)();
   if (!(page === "rehber" && sub2)) window.scrollTo(0, 0);
   tick(); syncWakeLock();
 }
@@ -1133,5 +1355,6 @@ window.addEventListener("storage", e => {
 if ("scrollRestoration" in history) history.scrollRestoration = "manual"; // kaydırmayı yönlendirici yönetir
 window.addEventListener("hashchange", route);
 setInterval(tick, 1000);
+backfillCourses();
 route();
 FileSync.init();

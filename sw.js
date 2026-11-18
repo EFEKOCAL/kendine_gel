@@ -1,6 +1,6 @@
 // Çevrimdışı destek. Ağ öncelikli: güncel sürüm varsa onu al (3 sn içinde), yoksa önbellekten sun.
 // CACHE adını her yayında değiştirmek gerekmez; eski önbellek activate'te temizlenir.
-const CACHE = "kendinegel-v5";
+const CACHE = "kendinegel-v6";
 const FILES = ["./", "./index.html", "./css/style.css", "./js/data.js", "./js/guide.js", "./js/store.js", "./js/filesync.js","./js/app.js", "./icon.svg", "./manifest.webmanifest",
   "./fonts/newsreader-latin.woff2", "./fonts/newsreader-latin-ext.woff2", "./fonts/plexmono-500-latin.woff2", "./fonts/plexmono-500-latin-ext.woff2"];
 

@@ -383,3 +383,47 @@ h2 { font-size: 1.55rem; } h3 { font-size: 1.2rem; }
   .post-head .lede { font-size: 1.15rem; }
   .post h3 { font-size: 1.3rem; }
 }
+
+/* Ders seçimi ve ders bazlı süre */
+.coursepick { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
+.coursepick legend { padding: 0; margin-bottom: 6px; font-weight: 500; }
+.coursepick .chip input { position: absolute; opacity: 0; pointer-events: none; }
+.coursepick .chip { position: relative; }
+.coursepick .chip:has(input:checked) { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.coursepick textarea { width: 100%; font: inherit; padding: 8px; border: 1px solid var(--field); border-radius: 8px; background: var(--surface); color: var(--text); box-sizing: border-box; }
+.courses .tbl { margin-bottom: 0; }
+.courses td:not(:first-child), .courses th:not(:first-child) { text-align: right; white-space: nowrap; }
+.courses tr.other td { color: var(--muted); border-top: 1px dashed var(--line); }
+.ctag { font-size: .72rem; border: 1px solid var(--line); color: var(--muted); padding: 1px 8px; border-radius: 99px; vertical-align: middle; }
+.coursepick .chip:has(input:focus-visible) { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Program: haftalık ders programı, hedefler, yoklama */
+.courses td.wk, .goals td.wk { min-width: 120px; }
+.courses td.wk .bar, .goals td.wk .bar { margin: 4px 0 0; height: 4px; }
+.sched { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.sday { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; }
+.sday h4, .attweek h4 { margin: 0 0 6px; font-family: var(--mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 500; }
+.slot { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--line); }
+.slot .stime { grid-column: 1 / -1; color: var(--muted); }
+.slot:first-of-type { border-top: 0; }
+.stime { font-variant-numeric: tabular-nums; font-size: .88rem; }
+.goals input[type=number] { width: 90px; }
+.attweek { margin-bottom: 14px; }
+.attrow { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 12px; padding: 6px 0; border-top: 1px solid var(--line); }
+.attend .attrow:first-of-type { border-top: 0; }
+.chip.xs.on { border-color: var(--accent); background: var(--accent); color: var(--surface); }
+.attend p { margin: 0 0 6px; }
+@media (max-width: 560px) { .goals input[type=number] { width: 64px; } .courses td.wk, .goals td.wk { min-width: 96px; } .goals .tbl th, .goals .tbl td { padding: 6px 4px; } }
+@media (max-width: 560px) { .courses .tbl tr > :nth-child(3) { display: none; } .courses .tbl th, .courses .tbl td { padding: 6px 4px; } }
+/* Ders programı: hafta içi 5 sütun */
+.tt { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 12px 0 8px; }
+.tt:has(> .sday:nth-child(6)) { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.tt .sday { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tt .slot { grid-template-columns: 1fr auto; }
+.tt .slot b { overflow-wrap: anywhere; }
+.addslot { margin-top: auto; padding-top: 6px; }
+.addslot summary { cursor: pointer; color: var(--accent); font-size: .88rem; }
+.addslot form { margin-top: 8px; gap: 6px; }
+.addslot select, .addslot input { width: 100%; min-width: 0; box-sizing: border-box; }
+.addslot .row label { flex: 1 1 100%; font-size: .8rem; }
+@media (max-width: 760px) { .tt, .tt:has(> .sday:nth-child(6)) { grid-template-columns: 1fr; } }

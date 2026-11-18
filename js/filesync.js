@@ -30,7 +30,7 @@ const FileSync = (() => {
   // --- Birleştirme ---
   // Kayıtlar id ile birleşir. Aynı kayıt iki tarafta varsa daha dolu olan (bitmiş, puanlanmış, geri bildirimli)
   // seçilir; eşitlikte dosyadaki kazanır (dosya, başka yerde yapılan son düzenlemeyi taşır).
-  const fill = e => (e.endTs ? 4 : 0) + (e.focusShare != null ? 2 : 0) + (e.feedback ? 1 : 0);
+  const fill = e => (e.endTs ? 4 : 0) + (e.focusShare != null ? 2 : 0) + (e.feedback ? 1 : 0) + (e.course ? 0.5 : 0);
   function merge(local, file) {
     const byId = new Map(local.entries.map(e => [e.id, e]));
     file.entries.forEach(f => { const l = byId.get(f.id); if (!l || fill(f) >= fill(l)) byId.set(f.id, f); });
@@ -38,7 +38,9 @@ const FileSync = (() => {
     const fileEmpty = !file.entries.length;
     const base = fileEmpty ? local : file;
     return { ...base, entries, active: local.active, break: local.break,
-      prefs: { ...local.prefs, ...(fileEmpty ? {} : file.prefs) }, guide: { ...local.guide, ...file.guide } };
+      prefs: { ...local.prefs, ...(fileEmpty ? {} : file.prefs) }, guide: { ...local.guide, ...file.guide },
+      // Eski dosyada program yoksa yereldeki korunur; yoklama kayıtları birleşir (eşitlikte dosya).
+      schedule: file.schedule?.length ? file.schedule : (local.schedule || []), attend: { ...local.attend, ...file.attend } };
   }
 
   async function readFile() {
