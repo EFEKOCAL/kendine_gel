@@ -8,6 +8,7 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": 
 const byId = (arr, id) => arr.find(x => x.id === id);
 const DAY = 864e5;
 const fmtDate = ts => new Date(ts).toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+const fmtDay = key => { const [y, m, d] = key.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("tr-TR", { day: "numeric", month: "long" }); };
 const dayKey = ts => { const d = new Date(ts); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const todayKey = () => dayKey(Date.now());
 const tomorrowKey = () => dayKey(Date.now() + DAY);
@@ -243,14 +244,16 @@ const ATTEND = [["gittim", "Gittim"], ["gitmedim", "Gitmedim"], ["yok", "Ders ya
 const weekday = ts => (new Date(ts).getDay() + 6) % 7;
 const atTime = (key, hm) => { const [y, mo, d] = key.split("-").map(Number), [h, mi] = hm.split(":").map(Number); return new Date(y, mo - 1, d, h, mi).getTime(); };
 const slotSort = (a, b) => a.day - b.day || a.start.localeCompare(b.start);
-// Geçmiş ders saatleri (en yeni önce). Başlangıç: yoklama başlangıç tarihi ya da dersin programa eklendiği gün; en çok 16 hafta geriye.
+// Yoklama alınmayan aralıklar (sınav haftası vb.): prefs.noAttend = [{from, to, label}] (gün anahtarları, iki uç dahil).
+const noAttendDay = key => (Store.get().prefs.noAttend || []).some(r => key >= r.from && key <= r.to);
+// Geçmiş ders saatleri (en yeni önce). Geriye dönük yoklama yok (kullanıcı isteği): yalnızca dersin programa eklendiği
+// günden sonrası sayılır; yoklama alınmayan aralıklar atlanır. En çok 16 hafta geriye.
 function lectureOccurrences(days = 112) {
   const s = Store.get(), now = Date.now(), out = [];
   const from = Math.max(now - days * DAY, weekStart(now) - 16 * 7 * DAY);
   for (const sl of s.schedule || []) {
-    const startKey = s.prefs.attendFrom && s.prefs.attendFrom < sl.since ? s.prefs.attendFrom : sl.since;
     for (let t = weekStart(from) + sl.day * DAY; t <= now; t += 7 * DAY) {
-      const key = dayKey(t); if (key < startKey || t < from - DAY) continue;
+      const key = dayKey(t); if (key < sl.since || t < from - DAY || noAttendDay(key)) continue;
       const ts = atTime(key, sl.start); if (ts > now) continue;
       const id = `${key}|${sl.id}`, rec = s.attend?.[id];
       out.push({ id, ts, key, course: sl.course, start: sl.start, end: sl.end, st: rec?.st || null });
@@ -280,7 +283,7 @@ const occLabel = o => `${new Date(o.ts).toLocaleDateString("tr-TR", { day: "nume
 // Ana sayfa: bugünün dersleri ve cevaplanmamış yoklamalar
 function attendHomeCard() {
   const s = Store.get(), today = weekday(Date.now()), now = Date.now();
-  const todays = (s.schedule || []).filter(sl => sl.day === today).sort(slotSort);
+  const todays = noAttendDay(todayKey()) ? [] : (s.schedule || []).filter(sl => sl.day === today).sort(slotSort);
   const pend = pendingAttendance().slice(0, 4);
   if (!todays.length && !pend.length) return "";
   return `<section class="card attend">
@@ -308,7 +311,7 @@ function viewProgram() {
   const showDays = DAYS.map((dn, i) => i).filter(i => i < 5 || slots.some(x => x.day === i));
   $app.innerHTML = `
     <h2>Ders programı</h2>
-    <p class="muted small">Her günün altındaki "Ders ekle" ile o günün derslerini gir. Ders saati başlayınca ana sayfada "Derse gittin mi?" sorulur; aşağıdaki Yoklama bölümünden geçmişe dönük de işaretleyebilirsin.</p>
+    <p class="muted small">Her günün altındaki "Ders ekle" ile o günün derslerini gir. Ders saati başlayınca ana sayfada "Derse gittin mi?" sorulur; son haftaların yoklaması aşağıda.</p>
     <div class="tt">${showDays.map(i => { const ds = slots.filter(x => x.day === i); return `
       <div class="sday"><h4>${DAYS[i]}</h4>
         ${ds.length ? ds.map(x => `<div class="slot"><span class="stime">${esc(x.start)}${x.end ? `–${esc(x.end)}` : ""}</span><span><b>${esc(x.course)}</b>${x.place ? ` <span class="muted">· ${esc(x.place)}</span>` : ""}</span><button class="link inline" data-delslot="${x.id}" aria-label="${esc(x.course)} ${DAYS[i]} ${esc(x.start)} sil">sil</button></div>`).join("") : `<p class="muted small">Ders yok</p>`}
@@ -322,8 +325,17 @@ function viewProgram() {
       </div>`; }).join("")}</div>
 
     <h3>Yoklama</h3>
-    <form id="attFromForm" class="goal-form"><label>Dönem başı <input type="date" name="from" value="${esc(s.prefs.attendFrom || "")}"></label><button class="btn">Kaydet</button></form>
-    <p class="muted small">Dönem başını girersen o tarihten bu yana geçen ders saatleri listelenir ve geriye dönük işaretlenebilir. Girmezsen yoklama, dersin programa eklendiği günden başlar. "Ders yapılmadı" orana girmez. Seçili butona tekrar dokununca işaret kalkar.</p>
+    <p class="muted small">Yoklama, dersin programa eklendiği günden itibaren alınır; geriye dönük yoklama yok. Aşağıdaki aralıklarda (sınav haftası vb.) yoklama alınmaz. "Ders yapılmadı" orana girmez. Seçili butona tekrar dokununca işaret kalkar.</p>
+    <div class="noatt">
+      ${(s.prefs.noAttend || []).map((r, i) => `<p class="small">Yoklama yok: <b>${esc(fmtDay(r.from))}${r.to !== r.from ? ` – ${esc(fmtDay(r.to))}` : ""}</b>${r.label ? ` · ${esc(r.label)}` : ""} <button class="link inline" data-delnoatt="${i}">sil</button></p>`).join("")}
+      <details class="fbform"><summary>Yoklama alınmayan aralık ekle</summary>
+        <form id="noAttForm" class="row tight">
+          <label>Başlangıç <input type="date" name="from" required></label>
+          <label>Bitiş <input type="date" name="to"></label>
+          <label>Not <input name="label" maxlength="40" placeholder="örn. Final haftası"></label>
+          <button class="btn">Ekle</button>
+        </form></details>
+    </div>
     ${Object.keys(st).length ? `<table class="tbl"><tr><th>Ders</th><th>Son 4 hafta</th><th>Tümü</th></tr>
       ${Object.keys(st).sort().map(c => `<tr><td>${esc(c)}</td><td>${pct(st[c].go4, st[c].n4)}</td><td>${pct(st[c].go, st[c].n)}</td></tr>`).join("")}</table>` : ""}
     ${occ.length ? Object.keys(byWeek).sort((a, b) => b - a).map(w => `
@@ -358,10 +370,15 @@ function viewProgram() {
     if (!confirm("Bu ders saati programdan silinsin mi? İşaretlenmiş yoklamalar kalır.")) return;
     Store.update(d => d.schedule = (d.schedule || []).filter(x => x.id !== b.dataset.delslot)); viewProgram();
   });
-  document.getElementById("attFromForm").onsubmit = e => {
-    e.preventDefault(); const v = new FormData(e.target).get("from") || null;
-    Store.update(d => d.prefs.attendFrom = v); viewProgram();
+  document.getElementById("noAttForm").onsubmit = e => {
+    e.preventDefault(); const f = new FormData(e.target);
+    let [a, b] = [f.get("from"), f.get("to") || f.get("from")]; if (!a) return; if (b < a) [a, b] = [b, a];
+    Store.update(d => d.prefs.noAttend = [...(d.prefs.noAttend || []), { from: a, to: b, label: f.get("label").trim() }].sort((x, y) => x.from.localeCompare(y.from)));
+    viewProgram();
   };
+  $app.querySelectorAll("[data-delnoatt]").forEach(b => b.onclick = () => {
+    Store.update(d => d.prefs.noAttend = (d.prefs.noAttend || []).filter((r, i) => i !== +b.dataset.delnoatt)); viewProgram();
+  });
   document.getElementById("coursesForm").onsubmit = e => {
     e.preventDefault();
     const list = [...new Set(new FormData(e.target).get("list").split("\n").map(x => x.trim()).filter(Boolean))].slice(0, 20);
@@ -538,7 +555,7 @@ function viewHazirlik() {
 }
 
 // ---------- Başlangıç formu (blok ve protokol ortak) ----------
-const MINS = [5, 10, 15, 20, 25, 30, 45, 60];
+const MINS = [5, 10, 15, 20, 25, 30, 45, 60, 90];
 // Kural tabanlı süre önerisi: son 5 aynı süreli bloğun tamamlanma oranına göre bir kademe yukarı / aşağı.
 function lengthHint(min) {
   const same = doneEntries().filter(e => e.plannedMin === min).slice(-5);

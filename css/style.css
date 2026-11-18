@@ -427,3 +427,4 @@ h2 { font-size: 1.55rem; } h3 { font-size: 1.2rem; }
 .addslot select, .addslot input { width: 100%; min-width: 0; box-sizing: border-box; }
 .addslot .row label { flex: 1 1 100%; font-size: .8rem; }
 @media (max-width: 760px) { .tt, .tt:has(> .sday:nth-child(6)) { grid-template-columns: 1fr; } }
+.noatt { margin-bottom: 14px; } .noatt p { margin: 0 0 4px; } #noAttForm label { flex: 1 1 140px; }

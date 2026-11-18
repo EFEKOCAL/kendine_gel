@@ -5,6 +5,8 @@ const Store = (() => {
   const VERSION = 2;
   const emptyPrefs = () => ({ env: null, minutes: 20, goalMin: 120, introSeen: false, notifAsked: false, wakeLock: true, plans: [], lastExport: null,
     // Blok başlatırken buton olarak çıkan dersler ("Diğer" ayrıca her zaman bulunur). Formdan düzenlenebilir.
+    // Yoklama alınmayan aralıklar (sınav haftası vb.). Varsayılan: 2026 güz vize haftası.
+    noAttend: [{ from: "2026-11-16", to: "2026-11-20", label: "Vize haftası" }],
     courses: ["İşletim Sistemleri", "Sinyaller ve Sistemler", "Mikrodenetleyiciler", "Yapay Sinir Ağları", "Nesne Yönelimli Programlama", "Atatürk İlkeleri ve İnkılap Tarihi", "Algoritma Analizi"] });
   // schedule: haftalık ders programı, attend: yoklama kayıtları (ayrıntı app.js → Program).
   const empty = () => ({ v: VERSION, entries: [], active: null, break: null, prefs: emptyPrefs(), guide: {}, prep: null, tomorrow: null, weekly: null, schedule: [], attend: {} });
